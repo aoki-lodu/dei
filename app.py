@@ -29,6 +29,9 @@ RISK_MAP_DISPLAY = {
     "6": "⚖️ フェア"
 }
 
+# 並び替え順序の定義
+SORT_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
+
 # --- ✅ 人財データ（全93名） ---
 CHARACTERS_DB = [
     # --- 🌈 アイデンティティ ---
@@ -172,32 +175,53 @@ POLICIES_DB = [
 ]
 
 # ==========================================
-# 1. サイドバー (シンプル版)
+# 1. サイドバー (並び替え・アイコン表示)
 # ==========================================
+# ソート用関数の定義
+def get_sort_priority(icons_list):
+    """
+    アイコンリストを受け取り、SORT_ORDERに基づく優先順位(インデックス)を返す。
+    該当するアイコンが複数ある場合は、最も優先順位が高いものに合わせる。
+    """
+    min_priority = 99
+    for icon in icons_list:
+        if icon in SORT_ORDER:
+            priority = SORT_ORDER.index(icon)
+            if priority < min_priority:
+                min_priority = priority
+    return min_priority
+
+# データを並び替え
+sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
+sorted_policies = sorted(POLICIES_DB, key=lambda x: get_sort_priority(x['target']))
+
 with st.sidebar:
     st.header("🎮 ゲーム操作盤")
     st.info("👇 メンバーや施策を選んでください")
     
-    # メンバーが増えたので、初期選択は数名に絞る
-    character_names = [c["name"] for c in CHARACTERS_DB]
-    selected_char_names = st.multiselect(
+    # メンバー選択
+    # format_funcを使って、ドロップダウン内の表示を「アイコン 名前 | 役職」にする
+    selected_chars = st.multiselect(
         "👤 参加メンバー",
-        options=character_names,
-        default=character_names[:3]
+        options=sorted_chars,
+        default=sorted_chars[:3],
+        format_func=lambda c: f"{''.join(c['icons'])} {c['name']} ｜ {c['role']}"
     )
     
     st.divider()
     
-    # 名前順に並べ替え
-    policy_names = sorted([p["name"] for p in POLICIES_DB])
-    selected_policy_names = st.multiselect(
+    # 施策選択
+    # format_funcを使って、ドロップダウン内の表示を「アイコン 施策名」にする
+    selected_policies = st.multiselect(
         "🃏 実行した施策",
-        options=policy_names,
-        default=[]
+        options=sorted_policies,
+        default=[],
+        format_func=lambda p: f"{''.join(p['target'])} {p['name']}"
     )
 
-active_chars = [c for c in CHARACTERS_DB if c["name"] in selected_char_names]
-active_policies = [p for p in POLICIES_DB if p["name"] in selected_policy_names]
+# 選択されたオブジェクトがそのままリストで返ってくるため、名前での検索などが不要になります
+active_chars = selected_chars
+active_policies = selected_policies
 
 # ==========================================
 # 2. 計算ロジック
