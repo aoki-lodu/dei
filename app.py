@@ -202,9 +202,13 @@ else:
         with cols_pol[i % 3]:
             # タグ生成
             type_tags = []
+            
+            # 【変更点】仕事力が上がる施策なら数値を表示（例：仕事力+2）
+            if pol["power"] > 0:
+                type_tags.append(f"🟢 仕事力+{pol['power']}")
+                
             if "shield" in pol["type"]: type_tags.append("🛡️ 離職防止")
             if "recruit" in pol["type"]: type_tags.append("🔵 採用強化")
-            if "promote" in pol["type"]: type_tags.append("🟢 スキルUP")
             
             pol_tags_html = ""
             for tag in type_tags:
