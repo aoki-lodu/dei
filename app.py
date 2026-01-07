@@ -4,6 +4,21 @@ import random
 import time
 
 # ==========================================
+# 0. 設定 (一番最初に書く必要があります)
+# ==========================================
+st.set_page_config(page_title="LODU Game", layout="wide", initial_sidebar_state="expanded")
+
+# カスタムCSS（見た目を整える）
+st.markdown("""
+<style>
+    .big-font { font-size:20px !important; font-weight: bold; }
+    .card { background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ff4b4b; }
+    .card-safe { border-left: 5px solid #00c853; }
+    .metric-container { background-color: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
 # 1. ゲームデータ定義
 # ==========================================
 ICONS = {"くらし(💚)": "💚", "キャリア(📖)": "📖", "グローバル(🌏)": "🌏", "アイデンティティ(🌈)": "🌈", "フェア(⚖️)": "⚖️"}
@@ -32,22 +47,7 @@ POLICIES_DB = [
 ]
 
 # ==========================================
-# 2. デザイン設定
-# ==========================================
-st.set_page_config(page_title="LODU Game", layout="wide", initial_sidebar_state="expanded")
-
-# カスタムCSS（見た目を整える）
-st.markdown("""
-<style>
-    .big-font { font-size:20px !important; font-weight: bold; }
-    .card { background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ff4b4b; }
-    .card-safe { border-left: 5px solid #00c853; } /* 安全な時は緑 */
-    .metric-container { background-color: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
-</style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 3. サイドバー（入力エリア）
+# 2. サイドバー（入力エリア）
 # ==========================================
 with st.sidebar:
     st.header("🎮 ゲーム操作盤")
@@ -69,14 +69,14 @@ with st.sidebar:
     
     st.divider()
     if st.button("🔄 リセット", type="primary"):
-        st.experimental_rerun()
+        st.rerun() # ここを修正しました
 
 # データの抽出
 active_chars = [c for c in CHARACTERS_DB if c["name"] in selected_char_names]
 active_policies = [p for p in POLICIES_DB if p["name"] in selected_policy_names]
 
 # ==========================================
-# 4. 計算ロジック
+# 3. 計算ロジック
 # ==========================================
 total_power = 0
 active_shields = set()
@@ -111,7 +111,7 @@ for char in active_chars:
     })
 
 # ==========================================
-# 5. メイン画面レイアウト
+# 4. メイン画面レイアウト
 # ==========================================
 
 # タイトルエリア
@@ -169,4 +169,25 @@ st.subheader("📊 組織メンバーの状態")
 cols = st.columns(3) # 3列で表示
 for i, res in enumerate(char_results):
     with cols[i % 3]: # 列を順番に使う
-        #
+        # カードのデザイン
+        border_color = "green" if res["is_safe"] else "red"
+        emoji_status = "🛡️鉄壁" if res["is_safe"] else "⚠️危険"
+        
+        with st.container(): # border=Trueを削除（互換性のため）
+            st.markdown(f"**{res['data']['name']}**")
+            st.caption(f"属性: {''.join(res['data']['icons'])}")
+            
+            # 仕事力メーター
+            st.progress(min(res["power"] / 10, 1.0), text=f"仕事力: {res['power']}")
+            
+            # ステータスバッジ
+            if res["tags"]:
+                st.markdown(" ".join([f"`{t}`" for t in res["tags"]]))
+            else:
+                st.caption("特殊効果なし")
+            
+            # リスク表示
+            if res["is_safe"]:
+                st.success(f"{emoji_status}")
+            else:
+                st.error(f"{emoji_status}: {''.join(res['risks'])}が出たらアウト")
