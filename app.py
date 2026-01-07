@@ -83,11 +83,9 @@ active_recruits = set()
 
 # 施策の効果を集計
 for pol in active_policies:
-    # 離職防止（盾）
     if "shield" in pol["type"]:
         for t in pol["target"]:
             active_shields.add(t)
-    # 採用（ターゲット）
     if "recruit" in pol["type"]:
         for t in pol["target"]:
             active_recruits.add(t)
@@ -135,11 +133,13 @@ with c4:
 
 st.divider()
 
-with st.expander("🎲 サイコロの出目対応表を見る"):
-    cols = st.columns(6)
-    for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
-        with cols[i]:
-            st.markdown(f"**{num}**: {desc}")
+# --- 【変更】プルダウンをやめて、そのまま表示 ---
+st.markdown("### 🎲 サイコロの出目対応表")
+cols = st.columns(6)
+for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
+    with cols[i]:
+        st.markdown(f"**{num}**: {desc}")
+# ---------------------------------------------
 
 # --- メンバー表示エリア ---
 st.subheader("📊 組織メンバーの状態")
@@ -151,7 +151,6 @@ if not char_results:
 else:
     for i, res in enumerate(char_results):
         with cols[i % 3]:
-            # 配色設定
             if res["is_safe"]:
                 border_color = "#00c853"
                 bg_color = "#e8f5e9"
@@ -172,7 +171,6 @@ else:
             for tag in res["tags"]:
                 tags_html += f"<span style='background:#fff; border:1px solid #ccc; border-radius:4px; padding:2px 5px; font-size:0.8em; margin-right:5px;'>{tag}</span>"
 
-            # メンバーカードHTML
             icons_str = "".join(res['data']['icons'])
             html_card = (
                 f'<div style="border: 4px solid {border_color}; border-radius: 12px; padding: 15px; background-color: {bg_color}; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">'
@@ -200,10 +198,7 @@ else:
     cols_pol = st.columns(3)
     for i, pol in enumerate(active_policies):
         with cols_pol[i % 3]:
-            # タグ生成
             type_tags = []
-            
-            # 【変更点】仕事力が上がる施策なら数値を表示（例：仕事力+2）
             if pol["power"] > 0:
                 type_tags.append(f"🟢 仕事力+{pol['power']}")
                 
@@ -214,7 +209,6 @@ else:
             for tag in type_tags:
                 pol_tags_html += f"<span style='background:#fff; border:1px solid #ccc; border-radius:4px; padding:2px 5px; font-size:0.8em; margin-right:5px; color:#333;'>{tag}</span>"
 
-            # 施策カードHTML
             target_icons = "".join(pol["target"])
             html_pol_card = (
                 f'<div style="border: 2px solid #5c6bc0; border-radius: 10px; padding: 15px; background-color: #e8eaf6; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">'
