@@ -6,12 +6,11 @@ import pandas as pd
 # ==========================================
 st.set_page_config(page_title="LODU Game", layout="wide", initial_sidebar_state="expanded")
 
-# カスタムCSS（見やすくする ＆ 誤操作防止）
+# カスタムCSS
 st.markdown("""
 <style>
     .big-font { font-size:20px !important; font-weight: bold; }
-    
-    /* ↓↓↓ 一括削除ボタン（×）を隠す魔法 ↓↓↓ */
+    /* 一括削除ボタン隠し */
     [data-testid="stMultiselect"] div[data-baseweb="select"] > div:nth-last-child(1) {
         display: none !important;
     }
@@ -50,7 +49,7 @@ POLICIES_DB = [
 ]
 
 # ==========================================
-# 1. サイドバー（入力）
+# 1. サイドバー
 # ==========================================
 with st.sidebar:
     st.header("🎮 ゲーム操作盤")
@@ -133,69 +132,46 @@ with st.expander("🎲 サイコロの出目対応表を見る"):
 st.subheader("📊 組織メンバーの状態")
 st.caption("リアルサイコロを振って、🟥 赤い枠 のメンバーの属性が出たら離職です。")
 
-# --- 【変更点】HTMLを使って強力にデザインする ---
 cols = st.columns(3)
 if not char_results:
     st.info("👈 サイドバーからメンバーを追加してください")
 else:
     for i, res in enumerate(char_results):
         with cols[i % 3]:
-            # 色の設定
+            # 配色設定
             if res["is_safe"]:
-                border_color = "#00c853" # 緑
-                bg_color = "#e8f5e9"     # 薄い緑
-                header_text = "🛡️ SAFE（安全）"
+                border_color = "#00c853"
+                bg_color = "#e8f5e9"
+                header_text = "🛡️ SAFE (安全)"
                 footer_text = "✅ ガード成功中"
                 footer_color = "#00c853"
             else:
-                border_color = "#ff1744" # 赤
-                bg_color = "#ffebee"     # 薄い赤
-                header_text = "⚠️ RISK（危険）"
+                border_color = "#ff1744"
+                bg_color = "#ffebee"
+                header_text = "⚠️ RISK (危険)"
                 risk_icons = " ".join(res['risks'])
                 footer_text = f"😱 {risk_icons} が出たらアウト"
                 footer_color = "#ff1744"
 
-            # 仕事力バーの長さ計算
             bar_width = min(res['power'] * 10, 100)
             
-            # タグのHTML生成
             tags_html = ""
             for tag in res["tags"]:
                 tags_html += f"<span style='background:#fff; border:1px solid #ccc; border-radius:4px; padding:2px 5px; font-size:0.8em; margin-right:5px;'>{tag}</span>"
 
-            # カードHTML（ここでガッツリ枠を作ります）
+            # HTML生成（インデントを削除して修正しました）
             html_card = f"""
-            <div style="
-                border: 4px solid {border_color}; 
-                border-radius: 12px; 
-                padding: 15px; 
-                background-color: {bg_color};
-                margin-bottom: 20px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            ">
-                <div style="font-weight:bold; color:{border_color}; font-size:1.1em; margin-bottom:5px;">
-                    {header_text}
-                </div>
-                <h3 style="margin:0 0 5px 0;">{res['data']['name']}</h3>
-                <div style="color:#555; font-size:0.9em; margin-bottom:10px;">
-                    属性: {''.join(res['data']['icons'])}
-                </div>
-                
-                <div style="font-size:0.8em; margin-bottom:2px;">仕事力: {res['power']}</div>
-                <div style="background-color: #ddd; height: 12px; border-radius: 6px; width: 100%; margin-bottom: 10px;">
-                    <div style="background-color: {border_color}; width: {bar_width}%; height: 100%; border-radius: 6px;"></div>
-                </div>
-                
-                <div style="margin-bottom: 10px;">
-                    {tags_html}
-                </div>
-                
-                <hr style="border-top: 2px dashed {border_color}; opacity: 0.3; margin: 10px 0;">
-                
-                <div style="font-weight:bold; color:{footer_color}; text-align:center;">
-                    {footer_text}
-                </div>
-            </div>
-            """
-            
+<div style="border: 4px solid {border_color}; border-radius: 12px; padding: 15px; background-color: {bg_color}; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="font-weight:bold; color:{border_color}; font-size:1.1em; margin-bottom:5px;">{header_text}</div>
+    <h3 style="margin:0 0 5px 0;">{res['data']['name']}</h3>
+    <div style="color:#555; font-size:0.9em; margin-bottom:10px;">属性: {''.join(res['data']['icons'])}</div>
+    <div style="font-size:0.8em; margin-bottom:2px;">仕事力: {res['power']}</div>
+    <div style="background-color: #ddd; height: 12px; border-radius: 6px; width: 100%; margin-bottom: 10px;">
+        <div style="background-color: {border_color}; width: {bar_width}%; height: 100%; border-radius: 6px;"></div>
+    </div>
+    <div style="margin-bottom: 10px;">{tags_html}</div>
+    <hr style="border-top: 2px dashed {border_color}; opacity: 0.3; margin: 10px 0;">
+    <div style="font-weight:bold; color:{footer_color}; text-align:center;">{footer_text}</div>
+</div>
+"""
             st.markdown(html_card, unsafe_allow_html=True)
