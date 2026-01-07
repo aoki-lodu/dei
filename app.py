@@ -29,8 +29,8 @@ RISK_MAP_DISPLAY = {
     "6": "⚖️ フェア"
 }
 
-# 並び替え順序の定義
-SORT_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
+# 並び替え順序の定義（シングルアイコン用）
+SINGLE_ICON_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
 
 # --- ✅ 人財データ（全93名） ---
 CHARACTERS_DB = [
@@ -180,32 +180,48 @@ POLICIES_DB = [
 # ソート用関数の定義
 def get_sort_priority(icons_list):
     """
-    アイコンリストを受け取り、SORT_ORDERに基づく優先順位(インデックス)を返す。
-    該当するアイコンが複数ある場合は、最も優先順位が高いものに合わせる。
+    アイコンの優先順位を返す。
+    ・アイコン数が2つ以上 → 優先度最低（99）＝⚖️より下
+    ・シングルアイコン → SINGLE_ICON_ORDER順
     """
-    min_priority = 99
-    for icon in icons_list:
-        if icon in SORT_ORDER:
-            priority = SORT_ORDER.index(icon)
-            if priority < min_priority:
-                min_priority = priority
-    return min_priority
+    # 複数アイコン持ちは一番下（⚖️より下）
+    if len(icons_list) > 1:
+        return 99
+    
+    # シングルアイコンの場合は指定順序
+    icon = icons_list[0]
+    if icon in SINGLE_ICON_ORDER:
+        return SINGLE_ICON_ORDER.index(icon)
+    
+    return 100 # Fallback
+
+# 施策用（ターゲットアイコンの優先度でソート）
+def get_policy_priority(target_list):
+    # ターゲットが複数の場合は、最も優先度の高いものに合わせるか、独自ルールにするか
+    # ここでは「一つでもSINGLE_ICON_ORDERの上位にあれば上」とする簡易ロジック
+    min_p = 99
+    for t in target_list:
+        if t in SINGLE_ICON_ORDER:
+            p = SINGLE_ICON_ORDER.index(t)
+            if p < min_p:
+                min_p = p
+    return min_p
 
 # データを並び替え
 sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
-sorted_policies = sorted(POLICIES_DB, key=lambda x: get_sort_priority(x['target']))
+sorted_policies = sorted(POLICIES_DB, key=lambda x: get_policy_priority(x['target']))
 
 with st.sidebar:
     st.header("🎮 ゲーム操作盤")
     st.info("👇 メンバーや施策を選んでください")
     
     # メンバー選択
-    # format_funcを使って、ドロップダウン内の表示を「アイコン 名前 | 役職」にする
+    # format_funcを使って、ドロップダウン内の表示を「アイコン 名前」にする（Roleは削除）
     selected_chars = st.multiselect(
         "👤 参加メンバー",
         options=sorted_chars,
         default=sorted_chars[:3],
-        format_func=lambda c: f"{''.join(c['icons'])} {c['name']} ｜ {c['role']}"
+        format_func=lambda c: f"{''.join(c['icons'])} {c['name']}"
     )
     
     st.divider()
