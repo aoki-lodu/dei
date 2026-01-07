@@ -1,40 +1,25 @@
 import streamlit as st
 import pandas as pd
 import random
+import time
 
 # ==========================================
 # 1. ゲームデータ定義
 # ==========================================
+ICONS = {"くらし(💚)": "💚", "キャリア(📖)": "📖", "グローバル(🌏)": "🌏", "アイデンティティ(🌈)": "🌈", "フェア(⚖️)": "⚖️"}
+RISK_MAP = {2: "💚", 3: "📖", 4: "🌏", 5: "🌈", 6: "⚖️"}
 
-# アイコン定義
-ICONS = {
-    "くらし(💚)": "💚",
-    "キャリア(📖)": "📖",
-    "グローバル(🌏)": "🌏",
-    "アイデンティティ(🌈)": "🌈",
-    "フェア(⚖️)": "⚖️"
-}
-
-# リスクの出目定義 (1はセーフ)
-RISK_MAP = {
-    2: "💚",
-    3: "📖",
-    4: "🌏",
-    5: "🌈",
-    6: "⚖️"
-}
-
-# 人財カードデータ
+# 人財データ
 CHARACTERS_DB = [
-    {"name": "白石 凛子", "base": 3, "icons": ["🌏", "🌈"]},
-    {"name": "山本 大翔", "base": 2, "icons": ["🌈"]},
-    {"name": "川瀬 美羽", "base": 1, "icons": ["💚", "📖", "🌈"]},
-    {"name": "Hanna Schmidt", "base": 2, "icons": ["💚", "🌏", "⚖️"]},
-    {"name": "宮下 慧", "base": 3, "icons": ["📖", "🌈"]}, 
-    {"name": "川口 由衣", "base": 3, "icons": ["📖"]},     
+    {"name": "白石 凛子", "base": 3, "icons": ["🌏", "🌈"], "role": "Manager"},
+    {"name": "山本 大翔", "base": 2, "icons": ["🌈"], "role": "Staff"},
+    {"name": "川瀬 美羽", "base": 1, "icons": ["💚", "📖", "🌈"], "role": "Newbie"},
+    {"name": "Hanna Schmidt", "base": 2, "icons": ["💚", "🌏", "⚖️"], "role": "Specialist"},
+    {"name": "宮下 慧", "base": 3, "icons": ["📖", "🌈"], "role": "Expert"},
+    {"name": "川口 由衣", "base": 3, "icons": ["📖"], "role": "Leader"},
 ]
 
-# 施策カードデータ
+# 施策データ
 POLICIES_DB = [
     {"name": "ペアワーク＆コードレビュー", "target": ["📖", "🌈"], "power": 2, "type": ["promote"]},
     {"name": "時短・コア短縮", "target": ["💚"], "power": 2, "type": ["shield", "recruit"]},
@@ -47,120 +32,141 @@ POLICIES_DB = [
 ]
 
 # ==========================================
-# 2. アプリのレイアウト設定
+# 2. デザイン設定
 # ==========================================
-st.set_page_config(page_title="LODU Game Calculator", layout="wide")
+st.set_page_config(page_title="LODU Game", layout="wide", initial_sidebar_state="expanded")
 
-st.title("🎲 DE&I ゲーム計算機")
-st.markdown("施策を選択して、組織の状態をチェックしよう！")
+# カスタムCSS（見た目を整える）
+st.markdown("""
+<style>
+    .big-font { font-size:20px !important; font-weight: bold; }
+    .card { background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ff4b4b; }
+    .card-safe { border-left: 5px solid #00c853; } /* 安全な時は緑 */
+    .metric-container { background-color: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+</style>
+""", unsafe_allow_html=True)
 
-# サイドバー：カードの選択
-st.sidebar.header("🎴 場の状況を入力")
-
-# 参加しているメンバーを選択
-selected_char_names = st.sidebar.multiselect(
-    "参加メンバーを選んでください",
-    [c["name"] for c in CHARACTERS_DB],
-    default=[c["name"] for c in CHARACTERS_DB[:4]] # 初期値は4人
-)
-
-# 実行した施策を選択
-selected_policy_names = st.sidebar.multiselect(
-    "実行した施策を選んでください",
-    [p["name"] for p in POLICIES_DB],
-    default=[]
-)
+# ==========================================
+# 3. サイドバー（入力エリア）
+# ==========================================
+with st.sidebar:
+    st.header("🎮 ゲーム操作盤")
+    st.info("手札のカードを選んでください")
+    
+    selected_char_names = st.multiselect(
+        "👤 参加メンバー",
+        [c["name"] for c in CHARACTERS_DB],
+        default=[c["name"] for c in CHARACTERS_DB[:3]]
+    )
+    
+    st.divider()
+    
+    selected_policy_names = st.multiselect(
+        "🃏 実行した施策",
+        [p["name"] for p in POLICIES_DB],
+        default=[]
+    )
+    
+    st.divider()
+    if st.button("🔄 リセット", type="primary"):
+        st.experimental_rerun()
 
 # データの抽出
 active_chars = [c for c in CHARACTERS_DB if c["name"] in selected_char_names]
 active_policies = [p for p in POLICIES_DB if p["name"] in selected_policy_names]
 
 # ==========================================
-# 3. 計算ロジック
+# 4. 計算ロジック
 # ==========================================
-
 total_power = 0
-results = []
-
-# 現在の場の「守り(盾)」状況を確認
-active_shields = set() 
+active_shields = set()
 for pol in active_policies:
     if "shield" in pol["type"]:
         for t in pol["target"]:
             active_shields.add(t)
 
+char_results = []
 for char in active_chars:
     current_power = char["base"]
-    status_text = []
-    risk_icons = []
+    status_tags = []
     
-    # 施策効果の適用
+    # 施策効果
     for pol in active_policies:
         if set(char["icons"]) & set(pol["target"]):
             current_power += pol["power"]
-            if "promote" in pol["type"] and "🟢昇進" not in status_text:
-                status_text.append("🟢昇進")
-            if "recruit" in pol["type"] and "🔵採用" not in status_text:
-                status_text.append("🔵採用")
-
+            if "promote" in pol["type"] and "🟢昇進" not in status_tags: status_tags.append("🟢昇進")
+            if "recruit" in pol["type"] and "🔵採用" not in status_tags: status_tags.append("🔵採用")
+            
     # リスク判定
-    for icon in char["icons"]:
-        if icon not in active_shields:
-            risk_icons.append(icon)
-
-    total_power += current_power
+    risks = [icon for icon in char["icons"] if icon not in active_shields]
+    is_safe = len(risks) == 0 # リスクがなければ安全
     
-    results.append({
-        "名前": char["name"],
-        "アイコン": "".join(char["icons"]),
-        "仕事力": current_power,
-        "状態": " ".join(status_text) if status_text else "ー",
-        "危険な出目": risk_icons
+    total_power += current_power
+    char_results.append({
+        "data": char,
+        "power": current_power,
+        "tags": status_tags,
+        "risks": risks,
+        "is_safe": is_safe
     })
 
 # ==========================================
-# 4. 結果表示
+# 5. メイン画面レイアウト
 # ==========================================
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric(label="🏆 チーム合計仕事力", value=total_power)
-with col2:
-    st.metric(label="🛡️ 離職防止(盾)", value=f"{len(active_shields)} 属性ガード中")
-with col3:
-    st.metric(label="👥 メンバー数", value=f"{len(active_chars)} 名")
+# タイトルエリア
+st.title("🎲 DE&I 組織シミュレーター")
+
+# スコアボード（目立つように配置）
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.metric("🏆 チーム仕事力", f"{total_power} pt")
+with c2:
+    st.metric("🛡️ ガード中の属性", f"{len(active_shields)} / 5 種")
+with c3:
+    st.metric("👥 メンバー数", f"{len(active_chars)} 名")
 
 st.divider()
 
+# ダイスロールセクション（ゲームのメイン）
 st.subheader("🎲 運命のダイスロール")
-if st.button("サイコロを振る！"):
-    dice = random.randint(1, 6)
-    st.success(f"出目は... **【 {dice} 】** です！")
-    
-    if dice == 1:
-        st.balloons()
-        st.markdown("### 🎉 セーフ！誰も辞めません！")
-    else:
-        risk_attr = RISK_MAP.get(dice)
-        if risk_attr:
-            st.markdown(f"### 対象属性: {risk_attr} (出目{dice})")
-            dropouts = []
-            for res in results:
-                if risk_attr in res["危険な出目"]:
-                    dropouts.append(res["名前"])
+col_dice_btn, col_dice_result = st.columns([1, 2])
+
+with col_dice_btn:
+    roll_btn = st.button("サイコロを振る！", type="primary", use_container_width=True)
+
+with col_dice_result:
+    if roll_btn:
+        with st.spinner("コロコロ..."):
+            time.sleep(1) # ドキドキ感を演出
+            dice = random.randint(1, 6)
+        
+        st.markdown(f"### 出目: **【 {dice} 】**")
+        
+        if dice == 1:
+            st.balloons()
+            st.success("🎉 **セーフ！** トラブルは起きませんでした！")
+        else:
+            risk_attr = RISK_MAP.get(dice)
+            st.warning(f"⚠️ 対象: **{risk_attr}** の属性を持つメンバー")
+            
+            # 離職判定
+            dropouts = [res["data"]["name"] for res in char_results if risk_attr in res["risks"]]
             
             if dropouts:
-                st.error(f"😱 離職発生！: **{', '.join(dropouts)}** さんが退職します...")
+                st.error(f"😱 **離職発生！**: {', '.join(dropouts)} さんが退職します...")
+            elif risk_attr in active_shields:
+                st.info(f"🛡️ **ガード成功！** 施策のおかげで {risk_attr} のメンバーは守られました！")
             else:
-                if risk_attr in active_shields:
-                    st.info(f"🛡️ 施策の効果でガードしました！離職者はゼロです！")
-                else:
-                    st.info("該当するメンバーはいませんでした。セーフ！")
+                st.success("💨 該当するメンバーがいなかったのでセーフ！")
 
 st.divider()
 
-st.subheader("📊 メンバー詳細")
-if results:
-    df = pd.DataFrame(results)
-    df["危険な出目"] = df["危険な出目"].apply(lambda x: "⚠️" + "".join(x) if x else "✅安全")
-    st.dataframe(df, use_container_width=True)
+# メンバーカード表示エリア
+st.subheader("📊 組織メンバーの状態")
+
+# グリッドレイアウトでカードを表示
+cols = st.columns(3) # 3列で表示
+for i, res in enumerate(char_results):
+    with cols[i % 3]: # 列を順番に使う
+        #
