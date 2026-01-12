@@ -279,6 +279,10 @@ president_data = {
     "risks": [],
     "is_safe": True
 }
+# === 修正箇所: 社長のパワーを合計に加算 ===
+total_power += president_data["power"]
+# =======================================
+
 char_results.insert(0, president_data)
 
 # ==========================================
