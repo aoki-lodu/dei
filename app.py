@@ -183,13 +183,8 @@ POLICIES_DB = [
 # ==========================================
 # 1. サイドバー (並び替え・アイコン表示)
 # ==========================================
-# ソート用関数
+# ソート用関数 (メンバー)
 def get_sort_priority(icons_list):
-    """
-    アイコンの優先順位を返す。
-    ・アイコン数が2つ以上 → 優先度最低（99）＝⚖️より下
-    ・シングルアイコン → SINGLE_ICON_ORDER順
-    """
     if len(icons_list) > 1:
         return 99
     
@@ -199,24 +194,34 @@ def get_sort_priority(icons_list):
     
     return 100
 
-# 施策用
-def get_policy_priority(target_list):
+# ソート用関数 (施策)
+def get_policy_sort_key(policy):
+    # 1. 【DNP】施策かどうか (0: DNP, 1: その他)
+    is_dnp = 0 if policy["name"].startswith("【DNP】") else 1
+
+    # 2. 既存の属性優先度計算
+    target_list = policy['target']
     if len(target_list) > 1:
-        return 99
-    t = target_list[0]
-    if t in SINGLE_ICON_ORDER:
-        return SINGLE_ICON_ORDER.index(t)
-    return 100
+        attr_priority = 99
+    else:
+        t = target_list[0]
+        if t in SINGLE_ICON_ORDER:
+            attr_priority = SINGLE_ICON_ORDER.index(t)
+        else:
+            attr_priority = 100
+            
+    # タプルで返すことで (DNP有無, 属性順) の順にソートされる
+    return (is_dnp, attr_priority)
 
 # データを並び替え
 sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
-sorted_policies = sorted(POLICIES_DB, key=lambda x: get_policy_priority(x['target']))
+# 修正箇所: ソートキー関数を変更
+sorted_policies = sorted(POLICIES_DB, key=get_policy_sort_key)
 
 with st.sidebar:
     st.header("🎮 ゲーム操作盤")
     st.info("👇 メンバーや施策を選んでください")
     
-    # 修正箇所: default=[] にして、初期選択を空にしました
     selected_chars = st.multiselect(
         "👤 参加メンバー",
         options=sorted_chars,
@@ -285,9 +290,8 @@ president_data = {
     "risks": [],
     "is_safe": True
 }
-# === 修正箇所: 社長のパワーを合計に加算 ===
+# === 社長のパワーを合計に加算 ===
 total_power += president_data["power"]
-# =======================================
 
 char_results.insert(0, president_data)
 
@@ -310,7 +314,6 @@ with c4:
     promote_text = " ".join(sorted(list(active_promotes))) if active_promotes else "ー"
     st.metric("🟢 昇進対象", promote_text)
 with c5:
-    # 修正: 社長を含めた表示数（char_resultsの要素数）を使用
     st.metric("👥 メンバー数", f"{len(char_results)} 名")
 
 st.divider()
@@ -387,9 +390,9 @@ else:
     cols_pol = st.columns(3)
     for i, pol in enumerate(active_policies):
         with cols_pol[i % 3]:
-            # 施策カードは統一デザイン（属性ごとの色分けなし）
-            pol_bg = "#e8eaf6"     # 薄い紫青系
-            pol_border = "#5c6bc0" # 濃い紫青系
+            # 施策カードは統一デザイン
+            pol_bg = "#e8eaf6"     
+            pol_border = "#5c6bc0" 
 
             type_tags = []
             if pol["power"] > 0:
