@@ -8,22 +8,18 @@ st.set_page_config(page_title="LODU Game Mobile", layout="wide", initial_sidebar
 # --- カスタムCSS（スマホ最適化） ---
 st.markdown("""
 <style>
-    /* 全体のフォント調整 */
     html, body, [class*="css"] {
         font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', sans-serif;
     }
-
     /* マルチセレクトの調整 */
     [data-testid="stMultiselect"] div[role="button"] {
-        background-color: #f0f2f6;
-        border: none;
+        background-color: #f0f2f6; border: none;
     }
-    
-    /* スコアボードのグリッド表示（スマホで見やすく） */
+    /* スコアボード */
     .score-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* カラム幅を少し狭く */
+        gap: 8px;
         background: #ffffff;
         padding: 10px;
         border-radius: 10px;
@@ -32,37 +28,31 @@ st.markdown("""
         text-align: center;
     }
     .score-item {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
     }
-    .score-label { font-size: 12px; color: #666; }
-    .score-value { font-size: 18px; font-weight: bold; color: #333; }
+    .score-label { font-size: 11px; color: #666; white-space: nowrap; }
+    .score-value { font-size: 16px; font-weight: bold; color: #333; }
     
-    /* カードデザインの調整 */
-    .member-card {
-        border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* 施策カード */
+    .policy-card {
+        background: white; border: 1px solid #ddd; padding: 10px; 
+        border-radius: 6px; margin-bottom: 8px; 
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .tag {
+        font-size: 0.75em; padding: 2px 5px; border-radius: 4px; margin-left: 3px;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ゲームデータ
 RISK_MAP_DISPLAY = {
-    "1": "🎉 セーフ",
-    "2": "💚 くらし",
-    "3": "📖 キャリア",
-    "4": "🌏 グローバル",
-    "5": "🌈 アイデンティティ",
-    "6": "⚖️ フェア"
+    "1": "🎉 セーフ", "2": "💚 くらし", "3": "📖 キャリア", 
+    "4": "🌏 グローバル", "5": "🌈 アイデンティティ", "6": "⚖️ フェア"
 }
 SINGLE_ICON_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
 
 # --- ✅ 人財データ（全93名） ---
-# (データは元のままです)
 CHARACTERS_DB = [
     {"name": "井上 菜々", "icons": ["💚"], "base": 1},
     {"name": "木村 拓海", "icons": ["💚"], "base": 1},
@@ -162,43 +152,43 @@ CHARACTERS_DB = [
     {"name": "Mei Tanaka", "icons": ["📖", "🌈", "⚖️"], "base": 2},
 ]
 
-# --- ✅ 施策データ ---
+# --- ✅ 施策データ（修正：CostとPowerを分離） ---
 POLICIES_DB = [
-    {"name": "【DNP】ヘルスウェルビーイング制度", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "【DNP】社内副業制度", "target": ["📖", "⚖️"], "power": 3, "type": ["recruit", "promote", "shield", "power"]},
-    {"name": "【DNP】グローバルタレントマネジメント", "target": ["🌏", "📖"], "power": 3, "type": ["recruit", "promote", "shield", "power"]},
-    {"name": "【DNP】オープン・ドア・ルーム", "target": ["📖", "🌈", "⚖️"], "power": 0, "type": ["shield"]},
-    {"name": "【DNP】障がい者インクルージョンコミュニティ", "target": ["🌈", "💚"], "power": 0, "type": ["promote", "shield"]},
-    {"name": "時短・コア短縮", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "アクセシブルツール支給", "target": ["💚"], "power": 2, "type": ["shield", "power"]},
-    {"name": "ケア支援（保育/介護補助）", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "配慮申請ガイド＆窓口", "target": ["💚"], "power": 0, "type": ["recruit", "shield"]},
-    {"name": "二言語テンプレ＆用語集", "target": ["🌏"], "power": 1, "type": ["recruit", "power"]},
-    {"name": "ビザスポンサー", "target": ["🌏"], "power": 0, "type": ["recruit", "shield"]},
-    {"name": "リロケーション支援", "target": ["🌏"], "power": 0, "type": ["recruit", "shield"]},
-    {"name": "ERG→経営提言ライン", "target": ["⚖️"], "power": 1, "type": ["promote", "power"]},
-    {"name": "リターンシップ", "target": ["💚", "📖"], "power": 0, "type": ["recruit", "promote"]},
-    {"name": "有償ワークサンプル", "target": ["💚", "📖"], "power": 1, "type": ["recruit", "power"]},
-    {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "power": 1, "type": ["promote", "shield", "power"]},
-    {"name": "フルリモート", "target": ["💚", "🌏"], "power": 1, "type": ["recruit", "shield", "power"]},
-    {"name": "会議字幕・通訳", "target": ["💚", "🌏"], "power": 1, "type": ["recruit", "power"]},
-    {"name": "サテライト/在宅手当", "target": ["💚", "🌏"], "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "交通・機材サポート", "target": ["💚", "⚖️"], "power": 1, "type": ["recruit", "power"]},
-    {"name": "アルムナイ/ブーメラン採用", "target": ["📖", "🌏"], "power": 1, "type": ["recruit", "promote", "shield", "power"]},
-    {"name": "オンボーディング90日", "target": ["📖", "🌏"], "power": 3, "type": ["shield", "power"]},
-    {"name": "ATSバイアスアラート運用", "target": ["📖", "🌈"], "power": 0, "type": ["recruit"]},
-    {"name": "ペアワーク＆コードレビュー標準", "target": ["📖", "🌈"], "power": 2, "type": ["promote", "power"]},
-    {"name": "内部公募マーケット", "target": ["📖", "🌈"], "power": 1, "type": ["promote", "shield", "power"]},
-    {"name": "構造化面接", "target": ["📖", "⚖️"], "power": 0, "type": ["recruit", "promote"]},
-    {"name": "学習支援（費用・就業内学習）", "target": ["📖", "⚖️"], "power": 3, "type": ["promote", "power"]},
-    {"name": "心理的安全性ルーチン", "target": ["🌈", "⚖️"], "power": 3, "type": ["promote", "shield", "power"]},
-    {"name": "メンタリング＆スポンサー", "target": ["🌈", "⚖️"], "power": 0, "type": ["promote", "shield"]},
-    {"name": "面接官トレーニング", "target": ["🌈", "⚖️"], "power": 0, "type": ["recruit", "promote"]},
-    {"name": "公正なアサイン管理", "target": ["🌈", "⚖️"], "power": 1, "type": ["promote", "power"]},
-    {"name": "透明な評価会（校正）", "target": ["🌈", "⚖️"], "power": 0, "type": ["promote", "shield"]},
-    {"name": "フェア採用ダッシュボード", "target": ["🌈", "⚖️"], "power": 0, "type": ["recruit"]},
-    {"name": "給与バンド公開", "target": ["🌈", "⚖️"], "power": 0, "type": ["recruit", "promote", "shield"]},
-    {"name": "インクルーシブJD", "target": ["📖", "🌈", "⚖️"], "power": 0, "type": ["recruit"]}
+    {"name": "DVO(DNP価値目標制度)制度と評価制度", "target": ["📖", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "タレントマネジメントシステムの活用", "target": ["🌈", "📖", "⚖️"], "cost": 2, "power": 0, "type": ["recruit"]},
+    {"name": "同性パートナーシップ制度", "target": ["⚖️", "🌈"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
+    {"name": "テレワーク・ワーケーション制度", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
+    {"name": "短時間勤務", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
+    {"name": "多言語対応", "target": ["🌏", "💚"], "cost": 2, "power": 2, "type": ["recruit", "power"]},
+    {"name": "ミドル・シニア向けキャリア自律支援", "target": ["📖", "💚", "⚖️"], "cost": 2, "power": 1, "type": ["recruit", "power"]},
+    {"name": "就労在留支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "リターンシップ(復職支援)", "target": ["📖", "💚"], "cost": 2, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "1on1", "target": ["📖", "🌏"], "cost": 2, "power": 3, "type": ["shield", "power"]},
+    {"name": "スポンサーシッププログラム", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["promote"]},
+    {"name": "職群別キャリア・スキルマップの可視化", "target": ["📖", "⚖️"], "cost": 1, "power": 1, "type": ["promote", "power"]},
+    {"name": "メンター制度", "target": ["💚", "📖"], "cost": 2, "power": 1, "type": ["promote", "shield"]},
+    {"name": "面接官トレーニング", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "ケア支援（保育/介護補助）", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
+    {"name": "ユニーバーサルデザインサポート", "target": ["💚"], "cost": 3, "power": 2, "type": ["shield", "power"]},
+    {"name": "インクルージョンループ", "target": ["🌈", "⚖️"], "cost": 2, "power": 3, "type": ["promote", "shield", "power"]},
+    {"name": "キャリアサポート休暇・ライフサポート休暇", "target": ["🌈", "⚖️"], "cost": 2, "power": 1, "type": ["shield", "power"]},
+    {"name": "施設（社員食堂、診療所、契約保養施設等）の充実", "target": ["🌈", "⚖️"], "cost": 2, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "通勤交通費支給", "target": ["💚", "⚖️"], "cost": 1, "power": 0, "type": ["recruit"]},
+    {"name": "転勤支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "社内公募・FA制度", "target": ["📖", "🌈"], "cost": 2, "power": 1, "type": ["promote", "shield", "power"]},
+    {"name": "キャリア自律支援金の支給", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["promote", "power"]},
+    {"name": "サテライト/在宅手当", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
+    {"name": "マネジメントフィードバック（360度評価）", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["promote", "shield"]},
+    {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "cost": 1, "power": 1, "type": ["promote", "shield", "power"]},
+    {"name": "各種申請ガイド＆相談窓口", "target": ["💚"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "アンコンシャス・バイアス研修", "target": ["🌈", "📖"], "cost": 2, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "アルムナイ/ブーメラン採用", "target": ["📖", "🌏"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
+    {"name": "指導員制度", "target": ["📖", "🌈"], "cost": 2, "power": 2, "type": ["promote", "power"]},
+    {"name": "ウェルビーイング表彰", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
+    {"name": "社内複業制度", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
+    {"name": "グローバルタレントマネジメント", "target": ["📖", "🌏"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
+    {"name": "障がい者インクルージョンコミュニティ", "target": ["💚", "🌈"], "cost": 2, "power": 0, "type": ["promote", "shield"]},
+    {"name": "オープン・ドア・ルーム（内部通報制度）", "target": ["🌈", "📖", "⚖️"], "cost": 1, "power": 0, "type": ["shield"]},
 ]
 
 # ソート用関数
@@ -207,28 +197,21 @@ def get_sort_priority(icons_list):
     icon = icons_list[0]
     return SINGLE_ICON_ORDER.index(icon) if icon in SINGLE_ICON_ORDER else 100
 
-def get_policy_sort_key(policy):
-    is_dnp = 0 if policy["name"].startswith("【DNP】") else 1
-    t = policy['target'][0]
-    attr_priority = SINGLE_ICON_ORDER.index(t) if t in SINGLE_ICON_ORDER else 100
-    return (is_dnp, attr_priority)
-
 sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
-sorted_policies_dnp = sorted([p for p in POLICIES_DB if p["name"].startswith("【DNP】")], key=get_policy_sort_key)
-sorted_policies_gen = sorted([p for p in POLICIES_DB if not p["name"].startswith("【DNP】")], key=get_policy_sort_key)
+# 施策はリスト順（インデックス順）
+sorted_policies = POLICIES_DB 
 
 # ==========================================
-# 1. スマホ対応入力エリア (Expander)
+# 1. スマホ対応入力エリア
 # ==========================================
 st.title("🎲 DE&I 組織シミュレーター")
 
-# 設定はサイドバーではなくメインエリア上部の折りたたみパネルへ
 with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", expanded=True):
     tab1, tab2 = st.tabs(["👥 メンバー選択", "🃏 施策実行"])
     
     with tab1:
         selected_chars = st.multiselect(
-            "参加メンバーを選んでください",
+            "参加メンバー",
             options=sorted_chars,
             default=[], 
             format_func=lambda c: f"{''.join(c['icons'])} {c['name']}",
@@ -238,22 +221,13 @@ with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", e
             st.caption(f"現在 {len(selected_chars)} 名を選択中")
 
     with tab2:
-        st.markdown("**1. DNP独自の制度**")
-        selected_dnp = st.multiselect(
-            "DNP制度",
-            options=sorted_policies_dnp,
+        st.markdown("**実施する施策を選んでください**")
+        selected_policies = st.multiselect(
+            "施策リスト (💰=コスト)",
+            options=sorted_policies,
             default=[],
-            format_func=lambda p: f"{''.join(p['target'])} {p['name'].replace('【DNP】', '')}"
+            format_func=lambda p: f"💰{p['cost']} {''.join(p['target'])} {p['name']}"
         )
-        
-        st.markdown("**2. 一般的な施策**")
-        selected_gen = st.multiselect(
-            "一般施策",
-            options=sorted_policies_gen,
-            default=[],
-            format_func=lambda p: f"{''.join(p['target'])} {p['name']}"
-        )
-        selected_policies = selected_dnp + selected_gen
 
 active_chars = selected_chars
 active_policies = selected_policies
@@ -262,11 +236,13 @@ active_policies = selected_policies
 # 2. 計算ロジック
 # ==========================================
 total_power = 0
+total_cost = 0  # コスト合計用
 active_shields = set()
 active_recruits = set()
 active_promotes = set()
 
 for pol in active_policies:
+    total_cost += pol["cost"]
     if "shield" in pol["type"]:
         for t in pol["target"]: active_shields.add(t)
     if "recruit" in pol["type"]:
@@ -280,10 +256,15 @@ for char in active_chars:
     status_tags = []
     
     for pol in active_policies:
+        # 属性マッチでパワー加算
         if set(char["icons"]) & set(pol["target"]):
             current_power += pol["power"]
-            if "promote" in pol["type"] and "🟢昇進" not in status_tags: status_tags.append("🟢昇進")
-            if "recruit" in pol["type"] and "🔵採用" not in status_tags: status_tags.append("🔵採用")
+            
+            # 効果タグの付与 (重複なし)
+            if "promote" in pol["type"] and "🟢昇進" not in status_tags: 
+                status_tags.append("🟢昇進")
+            if "recruit" in pol["type"] and "🔵採用" not in status_tags: 
+                status_tags.append("🔵採用")
             
     risks = [icon for icon in char["icons"] if icon not in active_shields]
     is_safe = len(risks) == 0 
@@ -304,8 +285,7 @@ char_results.insert(0, president_data)
 # 3. メイン画面レイアウト（スマホ最適化）
 # ==========================================
 
-# --- スコアボード (HTML/CSS Gridで構築) ---
-# リストを文字列に変換（空ならハイフン）
+# --- スコアボード ---
 shield_disp = "".join(sorted(list(active_shields))) if active_shields else "ー"
 recruit_disp = "".join(sorted(list(active_recruits))) if active_recruits else "ー"
 promote_disp = "".join(sorted(list(active_promotes))) if active_promotes else "ー"
@@ -314,7 +294,11 @@ st.markdown(f"""
 <div class="score-grid">
     <div class="score-item">
         <div class="score-label">🏆 チーム仕事力</div>
-        <div class="score-value" style="color:#d32f2f; font-size:24px;">{total_power}</div>
+        <div class="score-value" style="color:#d32f2f; font-size:22px;">{total_power}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">💰 総コスト</div>
+        <div class="score-value" style="color:#333;">{total_cost}</div>
     </div>
     <div class="score-item">
         <div class="score-label">🛡️ 離職防止</div>
@@ -328,32 +312,22 @@ st.markdown(f"""
         <div class="score-label">🟢 昇進対象</div>
         <div class="score-value">{promote_disp}</div>
     </div>
-    <div class="score-item">
-        <div class="score-label">👥 メンバー</div>
-        <div class="score-value">{len(char_results)}<span style="font-size:12px">名</span></div>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# サイコロ対応表
+# サイコロ表
 with st.expander("🎲 サイコロの出目を見る"):
     cols = st.columns(6)
     for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
         with cols[i]:
             st.markdown(f"**{num}**<br>{desc.replace(' ', '<br>')}", unsafe_allow_html=True)
 
-# --- メンバー表示エリア ---
+# --- メンバー表示 ---
 st.subheader("📊 組織メンバー")
-st.caption("🟥 赤枠のメンバーは、対応するサイコロの目が出ると離職します。")
 
-# スマホ向けにカラム数を調整 (画面幅に応じて自動)
-# Streamlit標準のカラムだとスマホで縦1列になりすぎるので、CSS Flex/Gridっぽい挙動にするため
-# カラム機能は維持しつつ、中身をシンプルに。
-cols = st.columns(3) # PCでは3列、スマホでは自動的に縦並びになるが、カードをスリムにする
-
+cols = st.columns(3)
 for i, res in enumerate(char_results):
     with cols[i % 3]:
-        # 配色設定
         if res["is_safe"]:
             border_color = "#00c853"
             bg_color = "#f1f8e9"
@@ -372,10 +346,8 @@ for i, res in enumerate(char_results):
             status_icon = "👑 社長"
             footer_text = "鉄壁"
 
-        # 簡潔なタグ表示
         tags_str = "".join([f"<span style='font-size:10px; border:1px solid #ccc; border-radius:3px; padding:1px 3px; margin-right:3px; background:white;'>{t}</span>" for t in res["tags"]])
         
-        # HTMLカード（高さをautoにしてスマホでの余白を消す）
         html_card = (
             f'<div class="member-card" style="border-left: 5px solid {border_color}; background-color: {bg_color};">'
             f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">'
@@ -392,25 +364,29 @@ for i, res in enumerate(char_results):
         )
         st.markdown(html_card, unsafe_allow_html=True)
 
-# --- 施策表示エリア ---
+# --- 施策表示 ---
 if active_policies:
     st.divider()
     st.subheader("🛠️ 実行施策リスト")
     
-    # 施策もコンパクトなリスト形式で表示
     for pol in active_policies:
         # タグ生成
         ptags = []
+        # コスト表示を追加
+        ptags.append(f"💰{pol['cost']}")
+        
+        # パワーが0より大きい場合のみ表示
         if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
+        
         if "shield" in pol["type"]: ptags.append("離職防")
         if "recruit" in pol["type"]: ptags.append("採用")
         if "promote" in pol["type"]: ptags.append("昇進")
         
-        ptags_html = " ".join([f"<span style='background:#e8eaf6; color:#3949ab; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:4px;'>{t}</span>" for t in ptags])
+        ptags_html = " ".join([f"<span class='tag' style='background:#e8eaf6; color:#3949ab;'>{t}</span>" for t in ptags])
         
         st.markdown(
             f"""
-            <div style="background:white; border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div class="policy-card">
                 <div>
                     <div style="font-weight:bold; color:#333; font-size:0.95em;">{pol['name']}</div>
                     <div style="font-size:0.8em; color:#777;">対象: {"".join(pol['target'])}</div>
