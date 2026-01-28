@@ -3,17 +3,49 @@ import streamlit as st
 # ==========================================
 # 0. 設定 & データ定義
 # ==========================================
-st.set_page_config(page_title="LODU Game", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="LODU Game Mobile", layout="wide", initial_sidebar_state="collapsed")
 
-# カスタムCSS
+# --- カスタムCSS（スマホ最適化） ---
 st.markdown("""
 <style>
-    .big-font { font-size:20px !important; font-weight: bold; }
+    /* 全体のフォント調整 */
+    html, body, [class*="css"] {
+        font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', sans-serif;
+    }
+
+    /* マルチセレクトの調整 */
+    [data-testid="stMultiselect"] div[role="button"] {
+        background-color: #f0f2f6;
+        border: none;
+    }
     
-    /* マルチセレクトの「×（全消去）」ボタンを消す */
-    [data-testid="stMultiselect"] button[title="Clear values"],
-    [data-testid="stMultiselect"] div[role="button"][aria-label="Clear all"] {
-        display: none !important;
+    /* スコアボードのグリッド表示（スマホで見やすく） */
+    .score-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        background: #ffffff;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .score-item {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .score-label { font-size: 12px; color: #666; }
+    .score-value { font-size: 18px; font-weight: bold; color: #333; }
+    
+    /* カードデザインの調整 */
+    .member-card {
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -27,13 +59,11 @@ RISK_MAP_DISPLAY = {
     "5": "🌈 アイデンティティ",
     "6": "⚖️ フェア"
 }
-
-# 並び替え順序の定義（シングルアイコン用）
 SINGLE_ICON_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
 
 # --- ✅ 人財データ（全93名） ---
+# (データは元のままです)
 CHARACTERS_DB = [
-    # --- 💚 くらし ---
     {"name": "井上 菜々", "icons": ["💚"], "base": 1},
     {"name": "木村 拓海", "icons": ["💚"], "base": 1},
     {"name": "林 佳奈", "icons": ["💚"], "base": 1},
@@ -49,7 +79,6 @@ CHARACTERS_DB = [
     {"name": "原田 怜", "icons": ["💚"], "base": 4},
     {"name": "田村 結菜", "icons": ["💚"], "base": 4},
     {"name": "竹内 智也", "icons": ["💚"], "base": 5},
-    # --- 📖 キャリア ---
     {"name": "長谷川 凛", "icons": ["📖"], "base": 1},
     {"name": "近藤 海斗", "icons": ["📖"], "base": 1},
     {"name": "石田 紅葉", "icons": ["📖"], "base": 1},
@@ -65,7 +94,6 @@ CHARACTERS_DB = [
     {"name": "杉本 麻衣", "icons": ["📖"], "base": 4},
     {"name": "中島 慎也", "icons": ["📖"], "base": 4},
     {"name": "金子 拓真", "icons": ["📖"], "base": 5},
-    # --- 🌏 グローバル ---
     {"name": "Ava Chen", "icons": ["🌏"], "base": 1},
     {"name": "Daniel Kim", "icons": ["🌏"], "base": 1},
     {"name": "Priya Singh", "icons": ["🌏"], "base": 1},
@@ -80,7 +108,6 @@ CHARACTERS_DB = [
     {"name": "Amira Hassan", "icons": ["🌏"], "base": 4},
     {"name": "Carlos Souza", "icons": ["🌏"], "base": 4},
     {"name": "Zoe Müller", "icons": ["🌏"], "base": 5},
-    # --- 🌈 アイデンティティ ---
     {"name": "佐藤 陽菜", "icons": ["🌈"], "base": 1},
     {"name": "鈴木 翔太", "icons": ["🌈"], "base": 1},
     {"name": "高橋 美咲", "icons": ["🌈"], "base": 1},
@@ -95,7 +122,6 @@ CHARACTERS_DB = [
     {"name": "佐々木 真央", "icons": ["🌈"], "base": 4},
     {"name": "山口 咲良", "icons": ["🌈"], "base": 4},
     {"name": "斎藤 陽介", "icons": ["🌈"], "base": 5},
-    # --- ⚖️ フェア ---
     {"name": "村上 拓人", "icons": ["⚖️"], "base": 1},
     {"name": "新井 美月", "icons": ["⚖️"], "base": 1},
     {"name": "大西 悠", "icons": ["⚖️"], "base": 1},
@@ -111,7 +137,6 @@ CHARACTERS_DB = [
     {"name": "浜田 佑香", "icons": ["⚖️"], "base": 4},
     {"name": "片山 駿", "icons": ["⚖️"], "base": 4},
     {"name": "柴田 悠斗", "icons": ["⚖️"], "base": 5},
-    # --- 複合属性 ---
     {"name": "花田 里緒", "icons": ["💚", "📖"], "base": 1},
     {"name": "Julia Novak", "icons": ["💚", "🌏"], "base": 4},
     {"name": "杉浦 颯太", "icons": ["💚", "🌏"], "base": 4},
@@ -142,20 +167,16 @@ POLICIES_DB = [
     {"name": "【DNP】ヘルスウェルビーイング制度", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
     {"name": "【DNP】社内副業制度", "target": ["📖", "⚖️"], "power": 3, "type": ["recruit", "promote", "shield", "power"]},
     {"name": "【DNP】グローバルタレントマネジメント", "target": ["🌏", "📖"], "power": 3, "type": ["recruit", "promote", "shield", "power"]},
-    {"name": "【DNP】オープン・ドア・ルーム（内部通報制度）", "target": ["📖", "🌈", "⚖️"], "power": 0, "type": ["shield"]},
+    {"name": "【DNP】オープン・ドア・ルーム", "target": ["📖", "🌈", "⚖️"], "power": 0, "type": ["shield"]},
     {"name": "【DNP】障がい者インクルージョンコミュニティ", "target": ["🌈", "💚"], "power": 0, "type": ["promote", "shield"]},
-    # --- 💚 くらし ---
     {"name": "時短・コア短縮", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
     {"name": "アクセシブルツール支給", "target": ["💚"], "power": 2, "type": ["shield", "power"]},
     {"name": "ケア支援（保育/介護補助）", "target": ["💚"], "power": 2, "type": ["recruit", "shield", "power"]},
     {"name": "配慮申請ガイド＆窓口", "target": ["💚"], "power": 0, "type": ["recruit", "shield"]},
-    # --- 🌏 グローバル ---
     {"name": "二言語テンプレ＆用語集", "target": ["🌏"], "power": 1, "type": ["recruit", "power"]},
     {"name": "ビザスポンサー", "target": ["🌏"], "power": 0, "type": ["recruit", "shield"]},
     {"name": "リロケーション支援", "target": ["🌏"], "power": 0, "type": ["recruit", "shield"]},
-    # --- ⚖️ フェア ---
     {"name": "ERG→経営提言ライン", "target": ["⚖️"], "power": 1, "type": ["promote", "power"]},
-    # --- 複合（2つ以上） ---
     {"name": "リターンシップ", "target": ["💚", "📖"], "power": 0, "type": ["recruit", "promote"]},
     {"name": "有償ワークサンプル", "target": ["💚", "📖"], "power": 1, "type": ["recruit", "power"]},
     {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "power": 1, "type": ["promote", "shield", "power"]},
@@ -180,63 +201,59 @@ POLICIES_DB = [
     {"name": "インクルーシブJD", "target": ["📖", "🌈", "⚖️"], "power": 0, "type": ["recruit"]}
 ]
 
-# ==========================================
-# 1. サイドバー (並び替え・アイコン表示)
-# ==========================================
-# ソート用関数 (メンバー)
+# ソート用関数
 def get_sort_priority(icons_list):
-    if len(icons_list) > 1:
-        return 99
-    
+    if len(icons_list) > 1: return 99
     icon = icons_list[0]
-    if icon in SINGLE_ICON_ORDER:
-        return SINGLE_ICON_ORDER.index(icon)
-    
-    return 100
+    return SINGLE_ICON_ORDER.index(icon) if icon in SINGLE_ICON_ORDER else 100
 
-# ソート用関数 (施策)
 def get_policy_sort_key(policy):
-    # 1. 【DNP】施策かどうか (0: DNP, 1: その他)
     is_dnp = 0 if policy["name"].startswith("【DNP】") else 1
-
-    # 2. 既存の属性優先度計算
-    target_list = policy['target']
-    if len(target_list) > 1:
-        attr_priority = 99
-    else:
-        t = target_list[0]
-        if t in SINGLE_ICON_ORDER:
-            attr_priority = SINGLE_ICON_ORDER.index(t)
-        else:
-            attr_priority = 100
-            
-    # タプルで返すことで (DNP有無, 属性順) の順にソートされる
+    t = policy['target'][0]
+    attr_priority = SINGLE_ICON_ORDER.index(t) if t in SINGLE_ICON_ORDER else 100
     return (is_dnp, attr_priority)
 
-# データを並び替え
 sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
-# 修正箇所: ソートキー関数を変更
-sorted_policies = sorted(POLICIES_DB, key=get_policy_sort_key)
+sorted_policies_dnp = sorted([p for p in POLICIES_DB if p["name"].startswith("【DNP】")], key=get_policy_sort_key)
+sorted_policies_gen = sorted([p for p in POLICIES_DB if not p["name"].startswith("【DNP】")], key=get_policy_sort_key)
 
-with st.sidebar:
-    st.header("🎮 ゲーム操作盤")
-    st.info("👇 メンバーや施策を選んでください")
+# ==========================================
+# 1. スマホ対応入力エリア (Expander)
+# ==========================================
+st.title("🎲 DE&I 組織シミュレーター")
+
+# 設定はサイドバーではなくメインエリア上部の折りたたみパネルへ
+with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", expanded=True):
+    tab1, tab2 = st.tabs(["👥 メンバー選択", "🃏 施策実行"])
     
-    selected_chars = st.multiselect(
-        "👤 参加メンバー",
-        options=sorted_chars,
-        default=[], 
-        format_func=lambda c: f"{''.join(c['icons'])} {c['name']}"
-    )
-    
-    st.divider()
-    
-    selected_policies = st.multiselect(
-        "🃏 実行した施策",
-        options=sorted_policies,
-        default=[],
-        format_func=lambda p: f"{''.join(p['target'])} {p['name']}"
-    )
+    with tab1:
+        selected_chars = st.multiselect(
+            "参加メンバーを選んでください",
+            options=sorted_chars,
+            default=[], 
+            format_func=lambda c: f"{''.join(c['icons'])} {c['name']}",
+            placeholder="タップして選択..."
+        )
+        if len(selected_chars) > 0:
+            st.caption(f"現在 {len(selected_chars)} 名を選択中")
+
+    with tab2:
+        st.markdown("**1. DNP独自の制度**")
+        selected_dnp = st.multiselect(
+            "DNP制度",
+            options=sorted_policies_dnp,
+            default=[],
+            format_func=lambda p: f"{''.join(p['target'])} {p['name'].replace('【DNP】', '')}"
+        )
+        
+        st.markdown("**2. 一般的な施策**")
+        selected_gen = st.multiselect(
+            "一般施策",
+            options=sorted_policies_gen,
+            default=[],
+            format_func=lambda p: f"{''.join(p['target'])} {p['name']}"
+        )
+        selected_policies = selected_dnp + selected_gen
 
 active_chars = selected_chars
 active_policies = selected_policies
@@ -251,14 +268,11 @@ active_promotes = set()
 
 for pol in active_policies:
     if "shield" in pol["type"]:
-        for t in pol["target"]:
-            active_shields.add(t)
+        for t in pol["target"]: active_shields.add(t)
     if "recruit" in pol["type"]:
-        for t in pol["target"]:
-            active_recruits.add(t)
+        for t in pol["target"]: active_recruits.add(t)
     if "promote" in pol["type"]:
-        for t in pol["target"]:
-            active_promotes.add(t)
+        for t in pol["target"]: active_promotes.add(t)
 
 char_results = []
 for char in active_chars:
@@ -276,142 +290,134 @@ for char in active_chars:
     
     total_power += current_power
     char_results.append({
-        "data": char,
-        "power": current_power,
-        "tags": status_tags,
-        "risks": risks,
-        "is_safe": is_safe
+        "data": char, "power": current_power, "tags": status_tags, "risks": risks, "is_safe": is_safe
     })
 
 president_data = {
     "data": {"name": "社長", "icons": ["👑"]},
-    "power": 2,
-    "tags": [],
-    "risks": [],
-    "is_safe": True
+    "power": 2, "tags": [], "risks": [], "is_safe": True
 }
-# === 社長のパワーを合計に加算 ===
 total_power += president_data["power"]
-
 char_results.insert(0, president_data)
 
 # ==========================================
-# 3. メイン画面レイアウト
+# 3. メイン画面レイアウト（スマホ最適化）
 # ==========================================
-st.title("🎲 DE&I 組織シミュレーター")
 
-# スコアボード
-c1, c2, c3, c4, c5 = st.columns(5)
-with c1:
-    st.metric("🏆 チーム仕事力", f"{total_power} pt")
-with c2:
-    shield_text = " ".join(sorted(list(active_shields))) if active_shields else "ー"
-    st.metric("🛡️ 離職防止中", shield_text)
-with c3:
-    recruit_text = " ".join(sorted(list(active_recruits))) if active_recruits else "ー"
-    st.metric("🔵 採用強化中", recruit_text)
-with c4:
-    promote_text = " ".join(sorted(list(active_promotes))) if active_promotes else "ー"
-    st.metric("🟢 昇進対象", promote_text)
-with c5:
-    st.metric("👥 メンバー数", f"{len(char_results)} 名")
+# --- スコアボード (HTML/CSS Gridで構築) ---
+# リストを文字列に変換（空ならハイフン）
+shield_disp = "".join(sorted(list(active_shields))) if active_shields else "ー"
+recruit_disp = "".join(sorted(list(active_recruits))) if active_recruits else "ー"
+promote_disp = "".join(sorted(list(active_promotes))) if active_promotes else "ー"
 
-st.divider()
+st.markdown(f"""
+<div class="score-grid">
+    <div class="score-item">
+        <div class="score-label">🏆 チーム仕事力</div>
+        <div class="score-value" style="color:#d32f2f; font-size:24px;">{total_power}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">🛡️ 離職防止</div>
+        <div class="score-value">{shield_disp}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">🔵 採用強化</div>
+        <div class="score-value">{recruit_disp}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">🟢 昇進対象</div>
+        <div class="score-value">{promote_disp}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">👥 メンバー</div>
+        <div class="score-value">{len(char_results)}<span style="font-size:12px">名</span></div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # サイコロ対応表
-st.markdown("### 🎲 サイコロの出目対応表")
-cols = st.columns(6)
-for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
-    with cols[i]:
-        st.markdown(f"**{num}**: {desc}")
+with st.expander("🎲 サイコロの出目を見る"):
+    cols = st.columns(6)
+    for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
+        with cols[i]:
+            st.markdown(f"**{num}**<br>{desc.replace(' ', '<br>')}", unsafe_allow_html=True)
 
 # --- メンバー表示エリア ---
-st.subheader("📊 組織メンバーの状態")
-st.caption("リアルサイコロを振って、🟥 赤い枠 のメンバーの属性が出たら離職です。")
+st.subheader("📊 組織メンバー")
+st.caption("🟥 赤枠のメンバーは、対応するサイコロの目が出ると離職します。")
 
-cols = st.columns(3)
+# スマホ向けにカラム数を調整 (画面幅に応じて自動)
+# Streamlit標準のカラムだとスマホで縦1列になりすぎるので、CSS Flex/Gridっぽい挙動にするため
+# カラム機能は維持しつつ、中身をシンプルに。
+cols = st.columns(3) # PCでは3列、スマホでは自動的に縦並びになるが、カードをスリムにする
 
 for i, res in enumerate(char_results):
     with cols[i % 3]:
-        # 配色設定 (SAFE/RISK のみで色分け)
+        # 配色設定
         if res["is_safe"]:
-            border_color = "#00c853" # Green
-            bg_color = "#e8f5e9"
-            header_text = "🛡️ SAFE (離職防止)" 
-            footer_text = "✅ 離職防止 成功中"
-            footer_color = "#00c853"
+            border_color = "#00c853"
+            bg_color = "#f1f8e9"
+            status_icon = "🛡️SAFE"
+            footer_text = "✅ 安泰"
+            footer_color = "#2e7d32"
         else:
-            border_color = "#ff1744" # Red
-            bg_color = "#ffebee"
-            header_text = "⚠️ RISK (危険)"
+            border_color = "#ff5252"
+            bg_color = "#fffbee"
+            status_icon = "⚠️RISK"
             risk_icons = " ".join(res['risks'])
-            footer_text = f"{risk_icons} が出たらアウト" 
-            footer_color = "#ff1744"
+            footer_text = f"🎲 {risk_icons} でOUT" 
+            footer_color = "#c62828"
 
         if res['data']['name'] == "社長":
-            header_text = "🏢 社長 (固定)"
-            footer_text = "✅ 絶対安泰"
+            status_icon = "👑 社長"
+            footer_text = "鉄壁"
 
-        bar_width = min(res['power'] * 10, 100)
+        # 簡潔なタグ表示
+        tags_str = "".join([f"<span style='font-size:10px; border:1px solid #ccc; border-radius:3px; padding:1px 3px; margin-right:3px; background:white;'>{t}</span>" for t in res["tags"]])
         
-        tags_html = ""
-        for tag in res["tags"]:
-            tags_html += f"<span style='background:#fff; border:1px solid #ccc; border-radius:4px; padding:2px 5px; font-size:0.8em; margin-right:5px;'>{tag}</span>"
-
-        icons_str = "".join(res['data']['icons'])
-        
+        # HTMLカード（高さをautoにしてスマホでの余白を消す）
         html_card = (
-            f'<div style="border: 4px solid {border_color}; border-radius: 12px; padding: 15px; background-color: {bg_color}; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 320px; display: flex; flex-direction: column; justify-content: space-between;">'
-            f'<div>'
-            f'<div style="font-weight:bold; color:{border_color}; font-size:1.1em; margin-bottom:5px;">{header_text}</div>'
-            f'<h3 style="margin:0 0 5px 0;">{res["data"]["name"]}</h3>'
-            f'<div style="color:#555; font-size:0.9em; margin-bottom:10px;">属性: {icons_str}</div>'
-            f'<div style="font-size:0.8em; margin-bottom:2px;">仕事力: {res["power"]}</div>'
-            f'<div style="background-color: rgba(0,0,0,0.1); height: 12px; border-radius: 6px; width: 100%; margin-bottom: 10px;">'
-            f'<div style="background-color: {border_color}; width: {bar_width}%; height: 100%; border-radius: 6px;"></div>'
+            f'<div class="member-card" style="border-left: 5px solid {border_color}; background-color: {bg_color};">'
+            f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">'
+            f'  <div style="font-weight:bold; font-size:0.9em; color:{border_color}">{status_icon}</div>'
+            f'  <div style="font-size:0.8em; font-weight:bold; color:#555">力: {res["power"]}</div>'
             f'</div>'
-            f'<div style="margin-bottom: 10px; min-height: 25px;">{tags_html}</div>'
-            f'</div>'
-            f'<div>'
-            f'<hr style="border-top: 2px dashed {border_color}; opacity: 0.3; margin: 10px 0;">'
-            f'<div style="font-weight:bold; color:{footer_color}; text-align:center;">{footer_text}</div>'
+            f'<div style="font-weight:bold; font-size:1.1em; margin-bottom:2px;">{res["data"]["name"]}</div>'
+            f'<div style="font-size:0.85em; color:#666; margin-bottom:5px;">{"".join(res["data"]["icons"])}</div>'
+            f'<div style="margin-bottom:8px; min-height:16px;">{tags_str}</div>'
+            f'<div style="border-top:1px dashed {border_color}; padding-top:4px; font-size:0.85em; color:{footer_color}; text-align:right; font-weight:bold;">'
+            f'{footer_text}'
             f'</div>'
             f'</div>'
         )
         st.markdown(html_card, unsafe_allow_html=True)
 
 # --- 施策表示エリア ---
-st.divider()
-st.subheader("🛠️ 実行中の施策")
-
-if not active_policies:
-    st.info("👈 サイドバーから施策を実行すると、ここに表示されます")
+if active_policies:
+    st.divider()
+    st.subheader("🛠️ 実行施策リスト")
+    
+    # 施策もコンパクトなリスト形式で表示
+    for pol in active_policies:
+        # タグ生成
+        ptags = []
+        if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
+        if "shield" in pol["type"]: ptags.append("離職防")
+        if "recruit" in pol["type"]: ptags.append("採用")
+        if "promote" in pol["type"]: ptags.append("昇進")
+        
+        ptags_html = " ".join([f"<span style='background:#e8eaf6; color:#3949ab; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:4px;'>{t}</span>" for t in ptags])
+        
+        st.markdown(
+            f"""
+            <div style="background:white; border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:bold; color:#333; font-size:0.95em;">{pol['name']}</div>
+                    <div style="font-size:0.8em; color:#777;">対象: {"".join(pol['target'])}</div>
+                </div>
+                <div style="text-align:right;">{ptags_html}</div>
+            </div>
+            """, unsafe_allow_html=True
+        )
 else:
-    cols_pol = st.columns(3)
-    for i, pol in enumerate(active_policies):
-        with cols_pol[i % 3]:
-            # 施策カードは統一デザイン
-            pol_bg = "#e8eaf6"     
-            pol_border = "#5c6bc0" 
-
-            type_tags = []
-            if pol["power"] > 0:
-                type_tags.append(f"🟢 仕事力+{pol['power']}")
-                
-            if "shield" in pol["type"]: type_tags.append("🛡️ 離職防止")
-            if "recruit" in pol["type"]: type_tags.append("🔵 採用強化")
-            if "promote" in pol["type"]: type_tags.append("🟢 昇進")
-
-            pol_tags_html = ""
-            for tag in type_tags:
-                pol_tags_html += f"<span style='background:#fff; border:1px solid #ccc; border-radius:4px; padding:2px 5px; font-size:0.8em; margin-right:5px; color:#333;'>{tag}</span>"
-
-            target_icons = "".join(pol["target"])
-            html_pol_card = (
-                f'<div style="border: 2px solid {pol_border}; border-radius: 10px; padding: 15px; background-color: {pol_bg}; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">'
-                f'<div style="font-weight:bold; color:{pol_border}; font-size:1.0em; margin-bottom:5px;">{pol["name"]}</div>'
-                f'<div style="font-size:0.9em; color:#555; margin-bottom:8px;">対象: {target_icons}</div>'
-                f'<div>{pol_tags_html}</div>'
-                f'</div>'
-            )
-            st.markdown(html_pol_card, unsafe_allow_html=True)
+    st.info("👆 上の「設定」パネルを開いて施策を選んでください")
