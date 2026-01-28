@@ -18,7 +18,7 @@ st.markdown("""
     /* スコアボード */
     .score-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* カラム幅を少し狭く */
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
         gap: 8px;
         background: #ffffff;
         padding: 10px;
@@ -50,9 +50,10 @@ RISK_MAP_DISPLAY = {
     "1": "🎉 セーフ", "2": "💚 くらし", "3": "📖 キャリア", 
     "4": "🌏 グローバル", "5": "🌈 アイデンティティ", "6": "⚖️ フェア"
 }
-SINGLE_ICON_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
+# 並び順の定義
+SORT_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
 
-# --- ✅ 人財データ（全93名） ---
+# --- ✅ 人財データ ---
 CHARACTERS_DB = [
     {"name": "井上 菜々", "icons": ["💚"], "base": 1},
     {"name": "木村 拓海", "icons": ["💚"], "base": 1},
@@ -152,54 +153,62 @@ CHARACTERS_DB = [
     {"name": "Mei Tanaka", "icons": ["📖", "🌈", "⚖️"], "base": 2},
 ]
 
-# --- ✅ 施策データ（修正：CostとPowerを分離） ---
+# --- ✅ 施策データ ---
 POLICIES_DB = [
-    {"name": "DVO(DNP価値目標制度)制度と評価制度", "target": ["📖", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
-    {"name": "タレントマネジメントシステムの活用", "target": ["🌈", "📖", "⚖️"], "cost": 2, "power": 0, "type": ["recruit"]},
-    {"name": "同性パートナーシップ制度", "target": ["⚖️", "🌈"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
-    {"name": "テレワーク・ワーケーション制度", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
     {"name": "短時間勤務", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "多言語対応", "target": ["🌏", "💚"], "cost": 2, "power": 2, "type": ["recruit", "power"]},
-    {"name": "ミドル・シニア向けキャリア自律支援", "target": ["📖", "💚", "⚖️"], "cost": 2, "power": 1, "type": ["recruit", "power"]},
-    {"name": "就労在留支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
-    {"name": "リターンシップ(復職支援)", "target": ["📖", "💚"], "cost": 2, "power": 0, "type": ["recruit", "promote"]},
-    {"name": "1on1", "target": ["📖", "🌏"], "cost": 2, "power": 3, "type": ["shield", "power"]},
-    {"name": "スポンサーシッププログラム", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["promote"]},
-    {"name": "職群別キャリア・スキルマップの可視化", "target": ["📖", "⚖️"], "cost": 1, "power": 1, "type": ["promote", "power"]},
-    {"name": "メンター制度", "target": ["💚", "📖"], "cost": 2, "power": 1, "type": ["promote", "shield"]},
-    {"name": "面接官トレーニング", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
     {"name": "ケア支援（保育/介護補助）", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
     {"name": "ユニーバーサルデザインサポート", "target": ["💚"], "cost": 3, "power": 2, "type": ["shield", "power"]},
+    {"name": "各種申請ガイド＆相談窓口", "target": ["💚"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "ウェルビーイング表彰", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
+    {"name": "就労在留支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "転勤支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "タレントマネジメントシステムの活用", "target": ["🌈", "📖", "⚖️"], "cost": 2, "power": 0, "type": ["recruit"]},
+    {"name": "同性パートナーシップ制度", "target": ["⚖️", "🌈"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
+    {"name": "スポンサーシッププログラム", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["promote"]},
     {"name": "インクルージョンループ", "target": ["🌈", "⚖️"], "cost": 2, "power": 3, "type": ["promote", "shield", "power"]},
     {"name": "キャリアサポート休暇・ライフサポート休暇", "target": ["🌈", "⚖️"], "cost": 2, "power": 1, "type": ["shield", "power"]},
     {"name": "施設（社員食堂、診療所、契約保養施設等）の充実", "target": ["🌈", "⚖️"], "cost": 2, "power": 0, "type": ["recruit", "shield"]},
-    {"name": "通勤交通費支給", "target": ["💚", "⚖️"], "cost": 1, "power": 0, "type": ["recruit"]},
-    {"name": "転勤支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
-    {"name": "社内公募・FA制度", "target": ["📖", "🌈"], "cost": 2, "power": 1, "type": ["promote", "shield", "power"]},
-    {"name": "キャリア自律支援金の支給", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["promote", "power"]},
-    {"name": "サテライト/在宅手当", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
     {"name": "マネジメントフィードバック（360度評価）", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["promote", "shield"]},
-    {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "cost": 1, "power": 1, "type": ["promote", "shield", "power"]},
-    {"name": "各種申請ガイド＆相談窓口", "target": ["💚"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
     {"name": "アンコンシャス・バイアス研修", "target": ["🌈", "📖"], "cost": 2, "power": 0, "type": ["recruit", "shield"]},
-    {"name": "アルムナイ/ブーメラン採用", "target": ["📖", "🌏"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
     {"name": "指導員制度", "target": ["📖", "🌈"], "cost": 2, "power": 2, "type": ["promote", "power"]},
-    {"name": "ウェルビーイング表彰", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
-    {"name": "社内複業制度", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
-    {"name": "グローバルタレントマネジメント", "target": ["📖", "🌏"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
     {"name": "障がい者インクルージョンコミュニティ", "target": ["💚", "🌈"], "cost": 2, "power": 0, "type": ["promote", "shield"]},
     {"name": "オープン・ドア・ルーム（内部通報制度）", "target": ["🌈", "📖", "⚖️"], "cost": 1, "power": 0, "type": ["shield"]},
+    {"name": "DVO(DNP価値目標制度)制度と評価制度", "target": ["📖", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "ミドル・シニア向けキャリア自律支援", "target": ["📖", "💚", "⚖️"], "cost": 2, "power": 1, "type": ["recruit", "power"]},
+    {"name": "リターンシップ(復職支援)", "target": ["📖", "💚"], "cost": 2, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "1on1", "target": ["📖", "🌏"], "cost": 2, "power": 3, "type": ["shield", "power"]},
+    {"name": "職群別キャリア・スキルマップの可視化", "target": ["📖", "⚖️"], "cost": 1, "power": 1, "type": ["promote", "power"]},
+    {"name": "メンター制度", "target": ["💚", "📖"], "cost": 2, "power": 1, "type": ["promote", "shield"]},
+    {"name": "社内公募・FA制度", "target": ["📖", "🌈"], "cost": 2, "power": 1, "type": ["promote", "shield", "power"]},
+    {"name": "キャリア自律支援金の支給", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["promote", "power"]},
+    {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "cost": 1, "power": 1, "type": ["promote", "shield", "power"]},
+    {"name": "アルムナイ/ブーメラン採用", "target": ["📖", "🌏"], "cost": 1, "power": 0, "type": ["recruit", "promote", "shield"]},
+    {"name": "社内複業制度", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
+    {"name": "グローバルタレントマネジメント", "target": ["📖", "🌏"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
+    {"name": "テレワーク・ワーケーション制度", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
+    {"name": "多言語対応", "target": ["🌏", "💚"], "cost": 2, "power": 2, "type": ["recruit", "power"]},
+    {"name": "面接官トレーニング", "target": ["🌈", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
+    {"name": "通勤交通費支給", "target": ["💚", "⚖️"], "cost": 1, "power": 0, "type": ["recruit"]},
+    {"name": "サテライト/在宅手当", "target": ["🌏", "💚"], "cost": 1, "power": 1, "type": ["recruit", "shield", "power"]},
 ]
 
-# ソート用関数
-def get_sort_priority(icons_list):
-    if len(icons_list) > 1: return 99
+# ソート用関数 (指定順: 💚 > 📖 > 🌏 > 🌈 > ⚖️ > 複合)
+def get_sort_priority_icons(icons_list):
+    # 複合属性（2つ以上）は後ろへ
+    if len(icons_list) > 1:
+        return 99
+    
+    # 単独属性の指定順
     icon = icons_list[0]
-    return SINGLE_ICON_ORDER.index(icon) if icon in SINGLE_ICON_ORDER else 100
+    if icon in SORT_ORDER:
+        return SORT_ORDER.index(icon)
+    return 50
 
-sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority(x['icons']))
-# 施策はリスト順（インデックス順）
-sorted_policies = POLICIES_DB 
+# メンバーのソート（メンバーも同様のルールで見やすく）
+sorted_chars = sorted(CHARACTERS_DB, key=lambda x: get_sort_priority_icons(x['icons']))
+
+# 施策のソート（関数を適用）
+sorted_policies = sorted(POLICIES_DB, key=lambda x: get_sort_priority_icons(x['target']))
 
 # ==========================================
 # 1. スマホ対応入力エリア
@@ -223,10 +232,10 @@ with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", e
     with tab2:
         st.markdown("**実施する施策を選んでください**")
         selected_policies = st.multiselect(
-            "施策リスト (💰=コスト)",
+            "施策リスト",
             options=sorted_policies,
             default=[],
-            format_func=lambda p: f"💰{p['cost']} {''.join(p['target'])} {p['name']}"
+            format_func=lambda p: f"{''.join(p['target'])} {p['name']}"
         )
 
 active_chars = selected_chars
@@ -236,13 +245,11 @@ active_policies = selected_policies
 # 2. 計算ロジック
 # ==========================================
 total_power = 0
-total_cost = 0  # コスト合計用
 active_shields = set()
 active_recruits = set()
 active_promotes = set()
 
 for pol in active_policies:
-    total_cost += pol["cost"]
     if "shield" in pol["type"]:
         for t in pol["target"]: active_shields.add(t)
     if "recruit" in pol["type"]:
@@ -294,11 +301,7 @@ st.markdown(f"""
 <div class="score-grid">
     <div class="score-item">
         <div class="score-label">🏆 チーム仕事力</div>
-        <div class="score-value" style="color:#d32f2f; font-size:22px;">{total_power}</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">💰 総コスト</div>
-        <div class="score-value" style="color:#333;">{total_cost}</div>
+        <div class="score-value" style="color:#d32f2f; font-size:24px;">{total_power}</div>
     </div>
     <div class="score-item">
         <div class="score-label">🛡️ 離職防止</div>
@@ -311,6 +314,10 @@ st.markdown(f"""
     <div class="score-item">
         <div class="score-label">🟢 昇進対象</div>
         <div class="score-value">{promote_disp}</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">👥 メンバー</div>
+        <div class="score-value">{len(char_results)}<span style="font-size:12px">名</span></div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -372,8 +379,7 @@ if active_policies:
     for pol in active_policies:
         # タグ生成
         ptags = []
-        # コスト表示を追加
-        ptags.append(f"💰{pol['cost']}")
+        # Cost表示は削除しました
         
         # パワーが0より大きい場合のみ表示
         if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
