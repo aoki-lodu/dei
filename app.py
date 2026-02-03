@@ -20,13 +20,13 @@ st.markdown("""
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
         gap: 10px;
-        background: #ffffff; /* 背景白 */
+        background: #ffffff;
         padding: 15px;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         margin-bottom: 25px;
         text-align: center;
-        color: #333333; /* ★ダークモード対策：文字色を黒に強制 */
+        color: #333333;
     }
     .score-item {
         display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -34,14 +34,14 @@ st.markdown("""
     }
     .score-label { 
         font-size: 13px; 
-        color: #666666 !important; /* ★強制的に濃いグレー */
+        color: #666666 !important;
         white-space: nowrap; 
         margin-bottom: 2px;
     }
     .score-value { 
         font-size: 20px; 
         font-weight: bold; 
-        color: #333333 !important; /* ★強制的に黒 */
+        color: #333333 !important;
         line-height: 1.2;
     }
     
@@ -53,7 +53,7 @@ st.markdown("""
         border-radius: 8px; margin-bottom: 12px; 
         display: flex; justify-content: space-between; align-items: center;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        color: #333333; /* ★ダークモード対策：文字色を黒に強制 */
+        color: #333333;
     }
     .tag {
         font-size: 0.85em;
@@ -69,12 +69,17 @@ st.markdown("""
         border-radius: 8px;
         margin-bottom: 10px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        color: #333333; /* ★ダークモード対策：文字色を黒に強制 */
+        color: #333333;
     }
 
     /* データフレーム調整 */
     thead tr th:first-child { display: none }
     tbody th { display: none }
+    
+    /* タブの強調 */
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 1.1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -239,7 +244,7 @@ def get_sorted_data():
 sorted_chars, sorted_policies = get_sorted_data()
 
 # ==========================================
-# 1. スマホ対応入力エリア (st.dataframe版)
+# 1. スマホ対応入力エリア
 # ==========================================
 st.title("🎲 DE&I 組織シミュレーター")
 
@@ -250,45 +255,16 @@ if "selected_policy_rows" not in st.session_state:
     st.session_state.selected_policy_rows = []
 
 with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", expanded=True):
-    tab1, tab2 = st.tabs(["👥 メンバー選択", "🃏 施策実行"])
-    
-    # --- メンバー選択 (DataFrame) ---
-    with tab1:
-        st.caption("👇 リストをタップして選択してください（複数選択可）")
-        
-        # DataFrame作成
-        df_chars = pd.DataFrame(sorted_chars)
-        # 表示用の列を作成
-        df_chars["選択用リスト"] = df_chars.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
-        
-        # 選択用DataFrameの表示
-        selection_event_chars = st.dataframe(
-            df_chars[["選択用リスト"]], # 表示する列
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="multi-row",
-            height=300, # スクロールしやすい高さ
-            key="df_chars_selection" # ★重要：keyを指定して状態を保持する
-        )
-        
-        # 選択された行のインデックスを取得
-        selected_indices = selection_event_chars.selection.rows
-        selected_chars = [sorted_chars[i] for i in selected_indices]
-        
-        if len(selected_chars) > 0:
-            st.caption(f"現在 {len(selected_chars)} 名を選択中")
+    # ★重要：依存関係があるので、先に施策、次にメンバーの順にします
+    tab1, tab2 = st.tabs(["🃏 ① 施策実行", "👥 ② メンバー選択"])
 
-    # --- 施策選択 (DataFrame) ---
-    with tab2:
-        st.caption("👇 実施する施策をタップしてください（複数選択可）")
+    # --- ① 施策選択 (DataFrame) ---
+    with tab1:
+        st.caption("👇 まずは実施する施策を選んでください")
         
-        # DataFrame作成
         df_pols = pd.DataFrame(sorted_policies)
-        # 表示用の列を作成
         df_pols["施策リスト"] = df_pols.apply(lambda x: f"{''.join(x['target'])} {x['name']}", axis=1)
         
-        # 選択用DataFrameの表示
         selection_event_pols = st.dataframe(
             df_pols[["施策リスト"]],
             use_container_width=True,
@@ -296,15 +272,62 @@ with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", e
             on_select="rerun",
             selection_mode="multi-row",
             height=300,
-            key="df_pols_selection" # ★重要：keyを指定して状態を保持する
+            key="df_pols_selection"
         )
         
-        # 選択された行のインデックスを取得
         selected_pol_indices = selection_event_pols.selection.rows
-        selected_policies = [sorted_policies[i] for i in selected_pol_indices]
+        active_policies = [sorted_policies[i] for i in selected_pol_indices]
+        
+        # ★ここで「現在採用可能な属性」を計算する
+        recruit_enabled_icons = set()
+        for pol in active_policies:
+            if "recruit" in pol["type"]:
+                for t in pol["target"]:
+                    recruit_enabled_icons.add(t)
+        
+        # ユーザーへのフィードバック
+        if recruit_enabled_icons:
+            icons_str = "".join(sorted(list(recruit_enabled_icons)))
+            st.info(f"🔓 採用可能になった属性: {icons_str}")
+        else:
+            st.warning("⚠️ 「採用」効果のある施策を選ぶと、メンバーが選べるようになります")
 
-active_chars = selected_chars
-active_policies = selected_policies
+    # --- ② メンバー選択 (DataFrame) ---
+    with tab2:
+        st.caption("👇 採用条件を満たしたメンバーのみ表示されます")
+        
+        # ★フィルタリングロジック：
+        # 人材の持つ属性(set) が、現在有効な採用属性(set) の「部分集合」である場合のみ表示
+        recruitable_chars = []
+        for char in sorted_chars:
+            char_icons_set = set(char["icons"])
+            if char_icons_set.issubset(recruit_enabled_icons):
+                recruitable_chars.append(char)
+        
+        if recruitable_chars:
+            df_chars = pd.DataFrame(recruitable_chars)
+            df_chars["選択用リスト"] = df_chars.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
+            
+            selection_event_chars = st.dataframe(
+                df_chars[["選択用リスト"]], 
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="multi-row",
+                height=300,
+                key="df_chars_selection" 
+            )
+            
+            # DataFrameの行番号から、フィルタリング済みリストの実データを取得
+            selected_indices = selection_event_chars.selection.rows
+            active_chars = [recruitable_chars[i] for i in selected_indices]
+            
+            if len(active_chars) > 0:
+                st.caption(f"現在 {len(active_chars)} 名を選択中")
+        else:
+            st.error("🚫 条件を満たす人材がいません。施策を追加してください。")
+            active_chars = []
+
 
 # ==========================================
 # 2. 計算ロジック
