@@ -493,7 +493,7 @@ if st.session_state.is_startup_completed:
                     bg_color = "#fffbee"
                     status_icon = "⚠️RISK"
                     risk_icons = " ".join(res['risks'])
-                    footer_text = f"🎲 {risk_icons} でOUT" 
+                    footer_text = f"サイコロを振って {risk_icons} が出たら離職" 
                     footer_color = "#c62828"
 
                 if res['data']['name'] == "社長":
