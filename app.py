@@ -244,250 +244,306 @@ def get_sorted_data():
 sorted_chars, sorted_policies = get_sorted_data()
 
 # ==========================================
-# 1. スマホ対応入力エリア
+# 1. 状態管理 & 初期セットアップ
 # ==========================================
 st.title("🎲 DE&I 組織シミュレーター")
 
 # セッション状態の初期化
+if "is_startup_completed" not in st.session_state:
+    st.session_state.is_startup_completed = False # 初期フェーズ完了フラグ
+if "initial_members" not in st.session_state:
+    st.session_state.initial_members = [] # 最初に選んだ2名
+
 if "selected_char_rows" not in st.session_state:
     st.session_state.selected_char_rows = []
 if "selected_policy_rows" not in st.session_state:
     st.session_state.selected_policy_rows = []
 
-with st.expander("⚙️ メンバーと施策を選ぶ (ここをタップ)", expanded=True):
-    # ★重要：依存関係があるので、先に施策、次にメンバーの順にします
-    tab1, tab2 = st.tabs(["🃏 ① 施策実行", "👥 ② メンバー選択"])
+# ==========================================
+# 2. フェーズ分岐処理
+# ==========================================
+active_chars = []
+active_policies = []
 
-    # --- ① 施策選択 (DataFrame) ---
-    with tab1:
-        st.caption("👇 まずは実施する施策を選んでください")
-        
-        df_pols = pd.DataFrame(sorted_policies)
-        df_pols["施策リスト"] = df_pols.apply(lambda x: f"{''.join(x['target'])} {x['name']}", axis=1)
-        
-        selection_event_pols = st.dataframe(
-            df_pols[["施策リスト"]],
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="multi-row",
-            height=300,
-            key="df_pols_selection"
-        )
-        
-        selected_pol_indices = selection_event_pols.selection.rows
-        active_policies = [sorted_policies[i] for i in selected_pol_indices]
-        
-        # ★ここで「現在採用可能な属性」を計算する
-        recruit_enabled_icons = set()
-        for pol in active_policies:
-            if "recruit" in pol["type"]:
-                for t in pol["target"]:
-                    recruit_enabled_icons.add(t)
-        
-        # ユーザーへのフィードバック
-        if recruit_enabled_icons:
-            icons_str = "".join(sorted(list(recruit_enabled_icons)))
-            st.info(f"🔓 採用可能になった属性: {icons_str}")
-        else:
-            st.warning("⚠️ 「採用」効果のある施策を選ぶと、メンバーが選べるようになります")
+# --- フェーズA: 初期メンバー選択 (2名限定) ---
+if not st.session_state.is_startup_completed:
+    st.info("🆕 **Step 1: 最初のメンバーを2名選んでください**")
+    st.caption("※ここはまだ施策の制限を受けずに自由に選べます")
 
-    # --- ② メンバー選択 (DataFrame) ---
-    with tab2:
-        st.caption("👇 採用条件を満たしたメンバーのみ表示されます")
-        
-        # ★フィルタリングロジック：
-        # 人材の持つ属性(set) が、現在有効な採用属性(set) の「部分集合」である場合のみ表示
-        recruitable_chars = []
-        for char in sorted_chars:
-            char_icons_set = set(char["icons"])
-            if char_icons_set.issubset(recruit_enabled_icons):
-                recruitable_chars.append(char)
-        
-        if recruitable_chars:
-            df_chars = pd.DataFrame(recruitable_chars)
-            df_chars["選択用リスト"] = df_chars.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
+    df_chars_init = pd.DataFrame(sorted_chars)
+    df_chars_init["選択用リスト"] = df_chars_init.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
+    
+    selection_event_init = st.dataframe(
+        df_chars_init[["選択用リスト"]], 
+        use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="multi-row",
+        height=300,
+        key="df_init_selection" 
+    )
+    
+    init_indices = selection_event_init.selection.rows
+    temp_init_members = [sorted_chars[i] for i in init_indices]
+    
+    # 2名選択されたらボタンを押せるようにする
+    if len(temp_init_members) == 2:
+        if st.button("🚀 この2名でスタート！", use_container_width=True, type="primary"):
+            st.session_state.initial_members = temp_init_members
+            st.session_state.is_startup_completed = True
+            st.rerun()
+    elif len(temp_init_members) > 2:
+        st.warning(f"⚠️ 選択できるのは2名までです (現在 {len(temp_init_members)} 名)")
+    else:
+        st.caption(f"あと {2 - len(temp_init_members)} 名選んでください")
+
+    # フェーズAではここで処理を止めて画面を表示
+    active_chars = [] # まだ計算しない
+
+# --- フェーズB: メインゲーム (施策 & 追加採用) ---
+else:
+    # 確定済みの初期メンバー
+    init_members = st.session_state.initial_members
+    
+    # メイン設定エリア
+    with st.expander("⚙️ 施策実行・追加採用 (ここをタップ)", expanded=True):
+        tab1, tab2 = st.tabs(["🃏 ① 施策実行", "👥 ② 追加採用"])
+
+        # --- ① 施策選択 ---
+        with tab1:
+            st.caption("👇 実施する施策を選んでください")
             
-            selection_event_chars = st.dataframe(
-                df_chars[["選択用リスト"]], 
+            df_pols = pd.DataFrame(sorted_policies)
+            df_pols["施策リスト"] = df_pols.apply(lambda x: f"{''.join(x['target'])} {x['name']}", axis=1)
+            
+            selection_event_pols = st.dataframe(
+                df_pols[["施策リスト"]],
                 use_container_width=True,
                 hide_index=True,
                 on_select="rerun",
                 selection_mode="multi-row",
                 height=300,
-                key="df_chars_selection" 
+                key="df_pols_selection"
             )
             
-            # DataFrameの行番号から、フィルタリング済みリストの実データを取得
-            selected_indices = selection_event_chars.selection.rows
-            active_chars = [recruitable_chars[i] for i in selected_indices]
+            selected_pol_indices = selection_event_pols.selection.rows
+            active_policies = [sorted_policies[i] for i in selected_pol_indices]
             
-            if len(active_chars) > 0:
-                st.caption(f"現在 {len(active_chars)} 名を選択中")
-        else:
-            st.error("🚫 条件を満たす人材がいません。施策を追加してください。")
-            active_chars = []
-
-
-# ==========================================
-# 2. 計算ロジック
-# ==========================================
-total_power = 0
-active_shields = set()
-active_recruits = set()
-active_promotes = set()
-
-for pol in active_policies:
-    if "shield" in pol["type"]:
-        for t in pol["target"]: active_shields.add(t)
-    if "recruit" in pol["type"]:
-        for t in pol["target"]: active_recruits.add(t)
-    if "promote" in pol["type"]:
-        for t in pol["target"]: active_promotes.add(t)
-
-char_results = []
-for char in active_chars:
-    current_power = char["base"]
-    status_tags = []
-    
-    for pol in active_policies:
-        # 属性マッチでパワー加算
-        if set(char["icons"]) & set(pol["target"]):
-            current_power += pol["power"]
+            # 採用可能属性の計算
+            recruit_enabled_icons = set()
+            for pol in active_policies:
+                if "recruit" in pol["type"]:
+                    for t in pol["target"]:
+                        recruit_enabled_icons.add(t)
             
-            # 効果タグの付与 (重複なし)
-            if "promote" in pol["type"] and "🟢昇進" not in status_tags: 
-                status_tags.append("🟢昇進")
-            if "recruit" in pol["type"] and "🔵採用" not in status_tags: 
-                status_tags.append("🔵採用")
-            
-    risks = [icon for icon in char["icons"] if icon not in active_shields]
-    is_safe = len(risks) == 0 
-    
-    total_power += current_power
-    char_results.append({
-        "data": char, "power": current_power, "tags": status_tags, "risks": risks, "is_safe": is_safe
-    })
-
-president_data = {
-    "data": {"name": "社長", "icons": ["👑"]},
-    "power": 2, "tags": [], "risks": [], "is_safe": True
-}
-total_power += president_data["power"]
-char_results.insert(0, president_data)
-
-# ==========================================
-# 3. メイン画面レイアウト（スマホ最適化）
-# ==========================================
-
-# --- スコアボード ---
-shield_disp = "".join(sorted(list(active_shields))) if active_shields else "ー"
-recruit_disp = "".join(sorted(list(active_recruits))) if active_recruits else "ー"
-promote_disp = "".join(sorted(list(active_promotes))) if active_promotes else "ー"
-
-st.markdown(f"""
-<div class="score-grid">
-    <div class="score-item">
-        <div class="score-label">🏆 チーム仕事力</div>
-        <div class="score-value" style="color:#d32f2f !important; font-size:26px;">{total_power}</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">🛡️ 離職防止</div>
-        <div class="score-value">{shield_disp}</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">🔵 採用強化</div>
-        <div class="score-value">{recruit_disp}</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">🟢 昇進対象</div>
-        <div class="score-value">{promote_disp}</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">👥 メンバー</div>
-        <div class="score-value">{len(char_results)}<span style="font-size:14px">名</span></div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# サイコロ表
-with st.expander("🎲 サイコロの出目を見る"):
-    cols = st.columns(6)
-    for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
-        with cols[i]:
-            st.markdown(f"**{num}**<br>{desc.replace(' ', '<br>')}", unsafe_allow_html=True)
-
-# --- メンバー表示 ---
-st.subheader("📊 組織メンバー")
-
-if char_results:
-    cols = st.columns(3)
-    for i, res in enumerate(char_results):
-        with cols[i % 3]:
-            if res["is_safe"]:
-                border_color = "#00c853"
-                bg_color = "#f1f8e9"
-                status_icon = "🛡️SAFE"
-                footer_text = "✅ 安泰"
-                footer_color = "#2e7d32"
+            if recruit_enabled_icons:
+                icons_str = "".join(sorted(list(recruit_enabled_icons)))
+                st.info(f"🔓 追加採用可能な属性: {icons_str}")
             else:
-                border_color = "#ff5252"
-                bg_color = "#fffbee"
-                status_icon = "⚠️RISK"
-                risk_icons = " ".join(res['risks'])
-                footer_text = f"🎲 {risk_icons} でOUT" 
-                footer_color = "#c62828"
+                st.warning("⚠️ 「採用」施策を選ぶと、追加メンバーが選べるようになります")
 
-            if res['data']['name'] == "社長":
-                status_icon = "👑 社長"
-                footer_text = "鉄壁"
-
-            tags_str = "".join([f"<span style='font-size:12px; border:1px solid #ccc; border-radius:3px; padding:2px 4px; margin-right:3px; background:white; color:#333;'>{t}</span>" for t in res["tags"]])
+        # --- ② 追加採用 (フィルタリングあり) ---
+        with tab2:
+            st.caption("👇 採用条件を満たしたメンバーのみ表示されます")
             
-            html_card = (
-                f'<div class="member-card" style="border-left: 6px solid {border_color}; background-color: {bg_color};">'
-                f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
-                f'  <div style="font-weight:bold; font-size:1.0em; color:{border_color}">{status_icon}</div>'
-                f'  <div style="font-size:0.95em; font-weight:bold; color:#555">力: {res["power"]}</div>'
-                f'</div>'
-                f'<div style="font-weight:bold; font-size:1.2em; margin-bottom:4px; color:#333;">{res["data"]["name"]}</div>'
-                f'<div style="font-size:1.0em; color:#666; margin-bottom:8px;">{"".join(res["data"]["icons"])}</div>'
-                f'<div style="margin-bottom:10px; min-height:18px;">{tags_str}</div>'
-                f'<div style="border-top:1px dashed {border_color}; padding-top:6px; font-size:0.95em; color:{footer_color}; text-align:right; font-weight:bold;">'
-                f'{footer_text}'
-                f'</div>'
-                f'</div>'
-            )
-            st.markdown(html_card, unsafe_allow_html=True)
+            # 初期メンバーに含まれていない人だけをフィルタリング対象にする
+            # (名前の一致で判定)
+            init_names = [m["name"] for m in init_members]
+            remaining_chars = [c for c in sorted_chars if c["name"] not in init_names]
 
-# --- 施策表示 ---
-if active_policies:
-    st.divider()
-    st.subheader("🛠️ 実行施策リスト")
+            # 属性フィルタリング
+            recruitable_chars = []
+            for char in remaining_chars:
+                char_icons_set = set(char["icons"])
+                # 部分集合かどうか判定
+                if char_icons_set.issubset(recruit_enabled_icons):
+                    recruitable_chars.append(char)
+            
+            selected_recruits = []
+            if recruitable_chars:
+                df_chars_recruit = pd.DataFrame(recruitable_chars)
+                df_chars_recruit["選択用リスト"] = df_chars_recruit.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
+                
+                selection_event_recruits = st.dataframe(
+                    df_chars_recruit[["選択用リスト"]], 
+                    use_container_width=True,
+                    hide_index=True,
+                    on_select="rerun",
+                    selection_mode="multi-row",
+                    height=300,
+                    key="df_recruits_selection" 
+                )
+                
+                recruit_indices = selection_event_recruits.selection.rows
+                selected_recruits = [recruitable_chars[i] for i in recruit_indices]
+                
+                if len(selected_recruits) > 0:
+                    st.caption(f"現在 {len(selected_recruits)} 名を追加選択中")
+            else:
+                if not recruit_enabled_icons:
+                    st.error("🚫 採用施策が選ばれていないため、追加できません")
+                else:
+                    st.error("🚫 条件を満たす残りの人材がいません")
+
+    # ★最終的なメンバーリスト = 初期メンバー + 追加採用メンバー
+    active_chars = init_members + selected_recruits
+
+
+# ==========================================
+# 3. 計算ロジック & 表示 (フェーズB以降のみ実行)
+# ==========================================
+if st.session_state.is_startup_completed:
     
+    total_power = 0
+    active_shields = set()
+    active_recruits = set()
+    active_promotes = set()
+
     for pol in active_policies:
-        # タグ生成
-        ptags = []
+        if "shield" in pol["type"]:
+            for t in pol["target"]: active_shields.add(t)
+        if "recruit" in pol["type"]:
+            for t in pol["target"]: active_recruits.add(t)
+        if "promote" in pol["type"]:
+            for t in pol["target"]: active_promotes.add(t)
+
+    char_results = []
+    for char in active_chars:
+        current_power = char["base"]
+        status_tags = []
         
-        # パワーが0より大きい場合のみ表示
-        if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
+        for pol in active_policies:
+            # 属性マッチでパワー加算
+            if set(char["icons"]) & set(pol["target"]):
+                current_power += pol["power"]
+                
+                # 効果タグの付与 (重複なし)
+                if "promote" in pol["type"] and "🟢昇進" not in status_tags: 
+                    status_tags.append("🟢昇進")
+                if "recruit" in pol["type"] and "🔵採用" not in status_tags: 
+                    status_tags.append("🔵採用")
+                
+        risks = [icon for icon in char["icons"] if icon not in active_shields]
+        is_safe = len(risks) == 0 
         
-        if "shield" in pol["type"]: ptags.append("離職防")
-        if "recruit" in pol["type"]: ptags.append("採用")
-        if "promote" in pol["type"]: ptags.append("昇進")
+        total_power += current_power
+        char_results.append({
+            "data": char, "power": current_power, "tags": status_tags, "risks": risks, "is_safe": is_safe
+        })
+
+    president_data = {
+        "data": {"name": "社長", "icons": ["👑"]},
+        "power": 2, "tags": [], "risks": [], "is_safe": True
+    }
+    total_power += president_data["power"]
+    char_results.insert(0, president_data)
+
+    # --- スコアボード ---
+    shield_disp = "".join(sorted(list(active_shields))) if active_shields else "ー"
+    recruit_disp = "".join(sorted(list(active_recruits))) if active_recruits else "ー"
+    promote_disp = "".join(sorted(list(active_promotes))) if active_promotes else "ー"
+
+    st.markdown(f"""
+    <div class="score-grid">
+        <div class="score-item">
+            <div class="score-label">🏆 チーム仕事力</div>
+            <div class="score-value" style="color:#d32f2f !important; font-size:26px;">{total_power}</div>
+        </div>
+        <div class="score-item">
+            <div class="score-label">🛡️ 離職防止</div>
+            <div class="score-value">{shield_disp}</div>
+        </div>
+        <div class="score-item">
+            <div class="score-label">🔵 採用強化</div>
+            <div class="score-value">{recruit_disp}</div>
+        </div>
+        <div class="score-item">
+            <div class="score-label">🟢 昇進対象</div>
+            <div class="score-value">{promote_disp}</div>
+        </div>
+        <div class="score-item">
+            <div class="score-label">👥 メンバー</div>
+            <div class="score-value">{len(char_results)}<span style="font-size:14px">名</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # サイコロ表
+    with st.expander("🎲 サイコロの出目を見る"):
+        cols = st.columns(6)
+        for i, (num, desc) in enumerate(RISK_MAP_DISPLAY.items()):
+            with cols[i]:
+                st.markdown(f"**{num}**<br>{desc.replace(' ', '<br>')}", unsafe_allow_html=True)
+
+    # --- メンバー表示 ---
+    st.subheader("📊 組織メンバー")
+
+    if char_results:
+        cols = st.columns(3)
+        for i, res in enumerate(char_results):
+            with cols[i % 3]:
+                if res["is_safe"]:
+                    border_color = "#00c853"
+                    bg_color = "#f1f8e9"
+                    status_icon = "🛡️SAFE"
+                    footer_text = "✅ 安泰"
+                    footer_color = "#2e7d32"
+                else:
+                    border_color = "#ff5252"
+                    bg_color = "#fffbee"
+                    status_icon = "⚠️RISK"
+                    risk_icons = " ".join(res['risks'])
+                    footer_text = f"🎲 {risk_icons} でOUT" 
+                    footer_color = "#c62828"
+
+                if res['data']['name'] == "社長":
+                    status_icon = "👑 社長"
+                    footer_text = "鉄壁"
+
+                tags_str = "".join([f"<span style='font-size:12px; border:1px solid #ccc; border-radius:3px; padding:2px 4px; margin-right:3px; background:white; color:#333;'>{t}</span>" for t in res["tags"]])
+                
+                html_card = (
+                    f'<div class="member-card" style="border-left: 6px solid {border_color}; background-color: {bg_color};">'
+                    f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
+                    f'  <div style="font-weight:bold; font-size:1.0em; color:{border_color}">{status_icon}</div>'
+                    f'  <div style="font-size:0.95em; font-weight:bold; color:#555">力: {res["power"]}</div>'
+                    f'</div>'
+                    f'<div style="font-weight:bold; font-size:1.2em; margin-bottom:4px; color:#333;">{res["data"]["name"]}</div>'
+                    f'<div style="font-size:1.0em; color:#666; margin-bottom:8px;">{"".join(res["data"]["icons"])}</div>'
+                    f'<div style="margin-bottom:10px; min-height:18px;">{tags_str}</div>'
+                    f'<div style="border-top:1px dashed {border_color}; padding-top:6px; font-size:0.95em; color:{footer_color}; text-align:right; font-weight:bold;">'
+                    f'{footer_text}'
+                    f'</div>'
+                    f'</div>'
+                )
+                st.markdown(html_card, unsafe_allow_html=True)
+
+    # --- 施策表示 ---
+    if active_policies:
+        st.divider()
+        st.subheader("🛠️ 実行施策リスト")
         
-        ptags_html = " ".join([f"<span class='tag' style='background:#e8eaf6; color:#3949ab;'>{t}</span>" for t in ptags])
-        
-        st.markdown(
-            f"""
-            <div class="policy-card">
-                <div>
-                    <div style="font-weight:bold; color:#333; font-size:1.1em;">{pol['name']}</div>
-                    <div style="font-size:0.9em; color:#777;">対象: {"".join(pol['target'])}</div>
+        for pol in active_policies:
+            # タグ生成
+            ptags = []
+            if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
+            if "shield" in pol["type"]: ptags.append("離職防")
+            if "recruit" in pol["type"]: ptags.append("採用")
+            if "promote" in pol["type"]: ptags.append("昇進")
+            
+            ptags_html = " ".join([f"<span class='tag' style='background:#e8eaf6; color:#3949ab;'>{t}</span>" for t in ptags])
+            
+            st.markdown(
+                f"""
+                <div class="policy-card">
+                    <div>
+                        <div style="font-weight:bold; color:#333; font-size:1.1em;">{pol['name']}</div>
+                        <div style="font-size:0.9em; color:#777;">対象: {"".join(pol['target'])}</div>
+                    </div>
+                    <div style="text-align:right;">{ptags_html}</div>
                 </div>
-                <div style="text-align:right;">{ptags_html}</div>
-            </div>
-            """, unsafe_allow_html=True
-        )
+                """, unsafe_allow_html=True
+            )
 else:
-    st.info("👆 上の「設定」パネルを開いて施策を選んでください")
+    # 初期画面（フェーズA）のときはスコアボードなどを表示しない
+    pass
