@@ -196,9 +196,13 @@ POLICIES_DB = [
     {"name": "ケア支援（保育/介護補助）", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
     {"name": "ユニーバーサルデザインサポート", "target": ["💚"], "cost": 2, "power": 2, "type": ["shield", "power"]},
     {"name": "各種申請ガイド＆相談窓口", "target": ["💚"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
-    {"name": "ウェルビーイング表彰", "target": ["💚","🌈"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
+    {"name": "男性育休", "target": ["💚"], "cost": 2, "power": 0, "type": ["recruit", "promote", "shield"]},
     {"name": "転勤支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
     {"name": "就労在留支援", "target": ["🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
+    {"name": "LGBTQ+アライコミュニティ", "target": ["🌈"], "cost": 2, "power": 0, "type": ["recruit", "promote", "shield"]},
+    {"name": "指導員制度", "target": ["🌈"], "cost": 2, "power": 2, "type": ["promote", "power"]},
+    {"name": "清和会", "target": ["⚖️"], "cost": 1, "power": 0, "type": ["shield"]},
+    {"name": "ウェルビーイング表彰", "target": ["💚","🌈"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},    
     {"name": "メンター制度", "target": ["💚", "📖"], "cost": 2, "power": 1, "type": ["promote", "shield","power"]},
     {"name": "リターンシップ(復職支援)", "target": ["💚", "📖"], "cost": 2, "power": 0, "type": ["recruit", "promote"]},
     {"name": "復帰ブリッジ（育休/介護）", "target": ["💚", "📖"], "cost": 1, "power": 1, "type": ["promote", "shield", "power"]},
@@ -211,7 +215,6 @@ POLICIES_DB = [
     {"name": "アルムナイ/ブーメラン採用", "target": ["📖", "🌏"], "cost": 1, "power": 0, "type": ["recruit", "shield"]},
     {"name": "グローバルタレントマネジメント", "target": ["🌏"], "cost": 3, "power": 3, "type": ["recruit", "promote", "shield", "power"]},
     {"name": "社内公募・FA制度", "target": ["📖", "🌈"], "cost": 2, "power": 1, "type": ["promote", "shield", "power"]},
-    {"name": "指導員制度", "target": ["🌈"], "cost": 2, "power": 2, "type": ["promote", "power"]},
     {"name": "アンコンシャス・バイアス研修", "target": ["📖", "🌈"], "cost": 2, "power": 0, "type": ["recruit", "shield"]},
     {"name": "DVO(DNP価値目標制度)制度と評価制度", "target": ["📖", "⚖️"], "cost": 1, "power": 0, "type": ["recruit", "promote"]},
     {"name": "キャリア自律支援金の支給", "target": ["📖", "⚖️"], "cost": 3, "power": 3, "type": ["promote", "power"]},
@@ -227,6 +230,7 @@ POLICIES_DB = [
     {"name": "ミドル・シニア向けキャリア自律支援", "target": ["💚","📖","⚖️"], "cost": 2, "power": 1, "type": ["recruit", "power"]},
     {"name": "オープン・ドア・ルーム（内部通報制度）", "target": ["📖","🌈","⚖️"], "cost": 1, "power": 0, "type": ["shield"]},
     {"name": "タレントマネジメントシステムの活用", "target": ["📖","🌈","🌏"], "cost": 2, "power": 0, "type": ["recruit"]},
+    
 ]
 
 # ソート用関数（キャッシュ化して高速化）
