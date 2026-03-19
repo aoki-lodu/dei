@@ -73,10 +73,9 @@ st.markdown("""
     
     /* メンバーカードのスタイル */
     .member-card {
-        /* 上下のpaddingを10pxから8pxに狭める */
-        padding: 8px 10px;
+        padding: 10px;
         border-radius: 8px;
-        margin-bottom: 10px !important;
+        margin-bottom: 10px !important; /* 間隔を元に戻しました */
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         color: #333333;
         background-color: white;
@@ -100,7 +99,19 @@ RISK_MAP_DISPLAY = {
 }
 SORT_ORDER = ['💚', '📖', '🌏', '🌈', '⚖️']
 
-# --- ✅ 人財データ ---
+# --- ✅ 初期人財カード (ゲーム開始時専用) ---
+INITIAL_CHARACTERS = [
+    {"name": "結城 奏太", "icons": ["💚", "🌈"], "base": 2},
+    {"name": "柊 凛花", "icons": ["📖", "⚖️"], "base": 2},
+    {"name": "神崎 剣也", "icons": ["🌏"], "base": 2},
+    {"name": "桜庭 美月", "icons": ["💚", "📖"], "base": 2},
+    {"name": "天道 翔", "icons": ["💚", "🌏"], "base": 2},
+    {"name": "橘 沙織", "icons": ["📖", "🌈"], "base": 2},
+    {"name": "Leon Heartfield", "icons": ["🌏", "⚖️"], "base": 2},
+    {"name": "Elena", "icons": ["🌈", "⚖️"], "base": 2}
+]
+
+# --- ✅ 人財データ (1個→2個→3個の順にソート済み) ---
 CHARACTERS_DB = [
     {"name": "本田 琴音", "icons": ["💚"], "base": 1},
     {"name": "浜田 佑香", "icons": ["💚"], "base": 1},
@@ -204,6 +215,14 @@ CHARACTERS_DB = [
     {"name": "Juan Martínez", "icons": ["🌏", "🌈", "⚖️"], "base": 2}
 ]
 
+# 全てのキャラクターを統合（初期メンバーがCHARACTERS_DBにいなければ追加するため）
+# 重複を避けるために名前で管理するか、初期メンバーもDBに含めて扱うかですが、
+# ここでは「初期メンバー」も全て `CHARACTERS_DB` に追加して通し番号(index)で管理しやすくします。
+for init_char in INITIAL_CHARACTERS:
+    # 既に同じ名前の人がいなければ追加
+    if not any(c["name"] == init_char["name"] for c in CHARACTERS_DB):
+        CHARACTERS_DB.append(init_char)
+
 # --- ✅ 施策データ ---
 POLICIES_DB = [
     {"name": "短時間勤務", "target": ["💚"], "cost": 2, "power": 2, "type": ["recruit", "shield", "power"]},
@@ -257,14 +276,19 @@ def get_sorted_data():
     
     sorted_chars = sorted(CHARACTERS_DB, key=get_sort_key)
     sorted_policies = POLICIES_DB
-    return sorted_chars, sorted_policies
+    
+    # 初期メンバーが sorted_chars のどのインデックスにいるかを特定する
+    init_char_names = [c["name"] for c in INITIAL_CHARACTERS]
+    init_indices = [i for i, c in enumerate(sorted_chars) if c["name"] in init_char_names]
+    
+    return sorted_chars, sorted_policies, init_indices
 
-sorted_chars, sorted_policies = get_sorted_data()
+sorted_chars, sorted_policies, initial_member_indices = get_sorted_data()
 
 # ==========================================
 # 1. 状態管理 & 初期セットアップ
 # ==========================================
-st.title("ＤＥ＆Ｉ経営ゲーム シミュレーター")
+st.title("🎲 DE&I 組織シミュレーター")
 
 # プレースホルダーの作成（タイトルのすぐ下）
 scoreboard_placeholder = st.empty()
@@ -287,13 +311,19 @@ if "active_member_indices" not in st.session_state:
 active_chars = []
 active_policies = []
 
+def sort_icons(icon_set):
+    return sorted(list(icon_set), key=lambda x: SORT_ORDER.index(x) if x in SORT_ORDER else 99)
+
 # --- フェーズA: 初期メンバー選択 (2名限定) ---
 if not st.session_state.is_startup_completed:
-    st.info("🆕 **Step 1: 最初のメンバーを2名選んでください**")
-    st.caption("※ここはまだ施策の制限を受けずに自由に選べます")
-
-    df_chars_init = pd.DataFrame(sorted_chars)
-    df_chars_init["選択用リスト"] = df_chars_init.apply(lambda x: f"{''.join(x['icons'])} {x['name']}", axis=1)
+    st.info("🆕 **Step 1: 初期人財カードから最初のメンバーを2名選んでください**")
+    
+    # 初期メンバーだけを含むデータフレームを作成
+    init_chars_data = [sorted_chars[i] for i in initial_member_indices]
+    df_chars_init = pd.DataFrame(init_chars_data)
+    
+    # アイコンをソートして表示
+    df_chars_init["選択用リスト"] = df_chars_init.apply(lambda x: f"{''.join(sort_icons(x['icons']))} {x['name']}", axis=1)
     
     selection_event_init = st.dataframe(
         df_chars_init[["選択用リスト"]], 
@@ -301,22 +331,23 @@ if not st.session_state.is_startup_completed:
         hide_index=True,
         on_select="rerun",
         selection_mode="multi-row",
-        height=300,
+        height=350,
         key="df_init_selection" 
     )
     
-    init_indices = selection_event_init.selection.rows
-    temp_init_members = [sorted_chars[i] for i in init_indices]
+    # 選択された行(0〜7)を、全体の sorted_chars のインデックスに変換する
+    selected_local_rows = selection_event_init.selection.rows
+    selected_global_indices = [initial_member_indices[r] for r in selected_local_rows]
     
-    if len(temp_init_members) == 2:
+    if len(selected_global_indices) == 2:
         if st.button("🚀 この2名でスタート！", use_container_width=True, type="primary"):
-            st.session_state.active_member_indices = init_indices
+            st.session_state.active_member_indices = selected_global_indices
             st.session_state.is_startup_completed = True
             st.rerun()
-    elif len(temp_init_members) > 2:
-        st.warning(f"⚠️ 選択できるのは2名までです (現在 {len(temp_init_members)} 名)")
+    elif len(selected_global_indices) > 2:
+        st.warning(f"⚠️ 選択できるのは2名までです (現在 {len(selected_global_indices)} 名)")
     else:
-        st.caption(f"あと {2 - len(temp_init_members)} 名選んでください")
+        st.caption(f"あと {2 - len(selected_global_indices)} 名選んでください")
 
     active_chars = [] 
 
@@ -329,7 +360,7 @@ else:
             st.caption("👇 実施する施策を選んでください")
             
             df_pols = pd.DataFrame(sorted_policies)
-            df_pols["施策リスト"] = df_pols.apply(lambda x: f"{''.join(x['target'])} {x['name']}", axis=1)
+            df_pols["施策リスト"] = df_pols.apply(lambda x: f"{''.join(sort_icons(x['target']))} {x['name']}", axis=1)
             
             selection_event_pols = st.dataframe(
                 df_pols[["施策リスト"]],
@@ -351,7 +382,7 @@ else:
                         recruit_enabled_icons.add(t)
             
             if recruit_enabled_icons:
-                icons_str = "".join(sorted(list(recruit_enabled_icons), key=lambda x: SORT_ORDER.index(x) if x in SORT_ORDER else 99))
+                icons_str = "".join(sort_icons(recruit_enabled_icons))
                 st.info(f"🔓 追加採用可能な属性: {icons_str}")
             else:
                 st.warning("⚠️ 「採用」施策を選ぶと、追加メンバーが選べるようになります")
@@ -376,7 +407,7 @@ else:
                 display_data.append({
                     "original_index": idx,
                     "参加": is_active,
-                    "名前と属性": f"{''.join(char['icons'])} {char['name']}"
+                    "名前と属性": f"{''.join(sort_icons(char['icons']))} {char['name']}"
                 })
                 
             df_display = pd.DataFrame(display_data)
@@ -442,11 +473,6 @@ if st.session_state.is_startup_completed:
         for pol in active_policies:
             if set(char["icons"]) & set(pol["target"]):
                 current_power += pol["power"]
-                # メンバーカード内のタグはすべて非表示
-                # if "promote" in pol["type"] and "🟢昇進" not in status_tags: 
-                #     status_tags.append("🟢昇進")
-                # if "recruit" in pol["type"] and "🔵採用" not in status_tags: 
-                #     status_tags.append("🔵採用")
                 
         risks = [icon for icon in char["icons"] if icon not in active_shields]
         is_safe = len(risks) == 0 
@@ -463,8 +489,6 @@ if st.session_state.is_startup_completed:
     total_power += president_data["power"]
     char_results.insert(0, president_data)
 
-    def sort_icons(icon_set):
-        return sorted(list(icon_set), key=lambda x: SORT_ORDER.index(x) if x in SORT_ORDER else 99)
 
     shield_disp = "".join(sort_icons(active_shields)) if active_shields else "ー"
     recruit_disp = "".join(sort_icons(active_recruits)) if active_recruits else "ー"
@@ -478,7 +502,7 @@ if st.session_state.is_startup_completed:
             <div class="score-value" style="color:#d32f2f !important; font-size:26px;">{total_power}</div>
         </div>
         <div class="score-item">
-            <div class="score-label">🔴 離職防止</div>
+            <div class="score-label">🛡️ 離職防止</div>
             <div class="score-value">{shield_disp}</div>
         </div>
         <div class="score-item">
@@ -527,23 +551,21 @@ if st.session_state.is_startup_completed:
                     status_icon = "👑 社長"
                     footer_text = "鉄壁"
 
-                # タグは空になる想定だが、一応残しておく（CSSで非表示にするか、リストが空なら表示されない）
                 tags_str = "".join([f"<span style='font-size:12px; border:1px solid #ccc; border-radius:3px; padding:2px 4px; margin-right:3px; background:white; color:#333;'>{t}</span>" for t in res["tags"]])
                 
                 char_icons_sorted = sort_icons(res["data"]["icons"])
                 
-                # アイコンを名前の隣に配置
                 html_card = (
                     f'<div class="member-card" style="border-left: 6px solid {border_color}; background-color: {bg_color};">'
-                    f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">' # marginを小さく
+                    f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">'
                     f'  <div style="font-weight:bold; font-size:1.0em; color:{border_color}">{status_icon}</div>'
                     f'  <div style="font-size:0.95em; font-weight:bold; color:#555">力: {res["power"]}</div>'
                     f'</div>'
-                    f'<div style="font-weight:bold; font-size:1.2em; margin-bottom:2px; color:#333; display:flex; align-items:center;">' # marginを小さく
+                    f'<div style="font-weight:bold; font-size:1.2em; margin-bottom:4px; color:#333; display:flex; align-items:center;">'
                     f'{res["data"]["name"]} <span style="font-size:0.9em; margin-left:6px;">{"".join(char_icons_sorted)}</span>'
                     f'</div>'
-                    f'<div style="margin-bottom:4px; min-height:10px;">{tags_str}</div>' # marginとmin-heightを小さく
-                    f'<div style="border-top:1px dashed {border_color}; padding-top:2px; font-size:0.95em; color:{footer_color}; text-align:right; font-weight:bold;">' # paddingを小さく
+                    f'<div style="margin-bottom:8px; min-height:18px;">{tags_str}</div>'
+                    f'<div style="border-top:1px dashed {border_color}; padding-top:4px; font-size:0.95em; color:{footer_color}; text-align:right; font-weight:bold;">'
                     f'{footer_text}'
                     f'</div>'
                     f'</div>'
@@ -557,9 +579,6 @@ if st.session_state.is_startup_completed:
         for pol in active_policies:
             ptags = []
             if pol["power"] > 0: ptags.append(f"力+{pol['power']}")
-            if "shield" in pol["type"]: ptags.append("離職防")
-            if "recruit" in pol["type"]: ptags.append("採用")
-            if "promote" in pol["type"]: ptags.append("昇進")
             
             ptags_html = " ".join([f"<span class='tag' style='background:#e8eaf6; color:#3949ab;'>{t}</span>" for t in ptags])
             
